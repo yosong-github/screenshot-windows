@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{91890353-AEBB-4336-BF26-3685835659AD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pegline.Core", "src\Pegline.Core\Pegline.Core.csproj", "{3858850B-FE00-4F53-9E8B-4604F9953336}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pegline.Platform", "src\Pegline.Platform\Pegline.Platform.csproj", "{D728958C-82C0-49C7-99A8-1FEDF9A830EE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pegline.App", "src\Pegline.App\Pegline.App.csproj", "{FA820200-1E06-4CEF-89A3-2CCE6CC3FB1D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{85E3AA37-EA79-473B-AD73-0934B17E9412}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pegline.Core.Tests", "tests\Pegline.Core.Tests\Pegline.Core.Tests.csproj", "{35EEB20D-F604-4EE8-8C08-44F8E1768272}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3858850B-FE00-4F53-9E8B-4604F9953336}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3858850B-FE00-4F53-9E8B-4604F9953336}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3858850B-FE00-4F53-9E8B-4604F9953336}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3858850B-FE00-4F53-9E8B-4604F9953336}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D728958C-82C0-49C7-99A8-1FEDF9A830EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D728958C-82C0-49C7-99A8-1FEDF9A830EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D728958C-82C0-49C7-99A8-1FEDF9A830EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D728958C-82C0-49C7-99A8-1FEDF9A830EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA820200-1E06-4CEF-89A3-2CCE6CC3FB1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA820200-1E06-4CEF-89A3-2CCE6CC3FB1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA820200-1E06-4CEF-89A3-2CCE6CC3FB1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA820200-1E06-4CEF-89A3-2CCE6CC3FB1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35EEB20D-F604-4EE8-8C08-44F8E1768272}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35EEB20D-F604-4EE8-8C08-44F8E1768272}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35EEB20D-F604-4EE8-8C08-44F8E1768272}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35EEB20D-F604-4EE8-8C08-44F8E1768272}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3858850B-FE00-4F53-9E8B-4604F9953336} = {91890353-AEBB-4336-BF26-3685835659AD}
+		{D728958C-82C0-49C7-99A8-1FEDF9A830EE} = {91890353-AEBB-4336-BF26-3685835659AD}
+		{FA820200-1E06-4CEF-89A3-2CCE6CC3FB1D} = {91890353-AEBB-4336-BF26-3685835659AD}
+		{35EEB20D-F604-4EE8-8C08-44F8E1768272} = {85E3AA37-EA79-473B-AD73-0934B17E9412}
+	EndGlobalSection
+EndGlobal

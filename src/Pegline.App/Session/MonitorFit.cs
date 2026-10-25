@@ -6,8 +6,11 @@ using Pegline.Platform.Win32;
 namespace Pegline.App.Session;
 
 /// <summary>
-/// Pins a window to a monitor in physical pixels, then tells WPF the DIP size that matches.
-/// Cropping does not use this placement; the overlay maps the drag through the frozen bitmap.
+/// Pins a window to a monitor. Layout DIPs come from the monitor DPI
+/// (<see cref="DisplayScale"/>); the HWND is always the physical rectangle.
+/// TransformFromDevice is not used: it is still the previous scale while the
+/// window is moving, and sizing the layout in physical pixels makes WPF draw
+/// the tree at 96/dpi into the top-left of the monitor.
 /// </summary>
 internal static class MonitorFit
 {
@@ -19,38 +22,15 @@ internal static class MonitorFit
             return;
         }
 
-        var scaleX = Math.Max(1, monitor.DpiX) / 96.0;
-        var scaleY = Math.Max(1, monitor.DpiY) / 96.0;
         var pixelWidth = monitor.Width;
-        var pixelHeight = heightDip is { } panelDip
-            ? Math.Max(1, (int)Math.Round(panelDip * scaleY))
+        var pixelHeight = heightDip is { } panel
+            ? Math.Max(1, DisplayScale.ToPhysical(panel, monitor.DpiY))
             : monitor.Height;
+        var dipWidth = Math.Max(1, DisplayScale.ToDip(pixelWidth, monitor.DpiX));
+        var dipHeight = Math.Max(1, DisplayScale.ToDip(pixelHeight, monitor.DpiY));
 
+        window.Width = dipWidth;
+        window.Height = dipHeight;
         WindowPlacement.Move(hwnd, monitor.Left, monitor.Top, pixelWidth, pixelHeight, activate);
-        var origin = ToDip(hwnd, monitor, pixelWidth, pixelHeight, scaleX, scaleY);
-        window.Left = origin.X;
-        window.Top = origin.Y;
-        window.Width = Math.Max(1, origin.Width);
-        window.Height = Math.Max(1, origin.Height);
-        // Assigning Left/Width can ask WPF to move the HWND again. Put the physical rect back.
-        WindowPlacement.Move(hwnd, monitor.Left, monitor.Top, pixelWidth, pixelHeight, activate);
-    }
-
-    private static Rect ToDip(IntPtr hwnd, MonitorBounds monitor, int pixelWidth, int pixelHeight, double scaleX, double scaleY)
-    {
-        var source = HwndSource.FromHwnd(hwnd);
-        var target = source?.CompositionTarget;
-        if (target is not null)
-        {
-            var matrix = target.TransformFromDevice;
-            var near = matrix.Transform(new Point(monitor.Left, monitor.Top));
-            var far = matrix.Transform(new Point(monitor.Left + pixelWidth, monitor.Top + pixelHeight));
-            if (far.X > near.X && far.Y > near.Y)
-            {
-                return new Rect(near, far);
-            }
-        }
-
-        return new Rect(monitor.Left / scaleX, monitor.Top / scaleY, pixelWidth / scaleX, pixelHeight / scaleY);
     }
 }

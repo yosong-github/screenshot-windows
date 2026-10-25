@@ -17,4 +17,24 @@ public sealed class DisplayEnvironment : IDisplayEnvironment
 
         return new MousePoint(point.X, point.Y);
     }
+
+    public double CaptionHeightDip(uint dpi)
+    {
+        if (dpi == 0)
+        {
+            dpi = 96;
+        }
+
+        try
+        {
+            var caption = NativeMethods.GetSystemMetricsForDpi(NativeMethods.SmCyCaption, dpi);
+            var frame = NativeMethods.GetSystemMetricsForDpi(NativeMethods.SmCyFrame, dpi);
+            var pad = NativeMethods.GetSystemMetricsForDpi(NativeMethods.SmCxPaddedBorder, dpi);
+            return CaptionBand.FromPhysical(caption, frame, pad, dpi);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return CaptionBand.FallbackDip;
+        }
+    }
 }

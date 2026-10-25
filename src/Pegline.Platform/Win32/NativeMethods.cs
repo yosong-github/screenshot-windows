@@ -18,6 +18,9 @@ internal static class NativeMethods
     public const uint WmAppInvoke = 0x8000 + 1;
     public const int SmCxScreen = 0;
     public const int SmCyScreen = 1;
+    public const int SmCyCaption = 4;
+    public const int SmCyFrame = 33;
+    public const int SmCxPaddedBorder = 92;
 
     public static readonly IntPtr HwndMessage = new(-3);
     public static readonly IntPtr HwndTopmost = new(-1);
@@ -162,6 +165,9 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int index);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetricsForDpi(int index, uint dpi);
 
     [DllImport("user32.dll")]
     public static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int width, int height, uint flags);

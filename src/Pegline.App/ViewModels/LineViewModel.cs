@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Pegline.App.Imaging;
 using Pegline.Core.Domain;
@@ -8,6 +9,7 @@ namespace Pegline.App.ViewModels;
 public partial class LineViewModel : ObservableObject
 {
     private double _width;
+    private double _ropeTop = LineLayout.RopeTop;
 
     public ObservableCollection<HangingCardViewModel> Cards { get; } = new();
 
@@ -21,7 +23,7 @@ public partial class LineViewModel : ObservableObject
 
     public event EventHandler<Guid>? RemoveRequested;
 
-    public void Replace(IReadOnlyList<HangingItem> items, Guid? flyingId)
+    public void Replace(IReadOnlyList<HangingItem> items, Guid? flyingId, ImageSource? flyingImage = null)
     {
         var previous = Cards.ToDictionary(card => card.Id);
         Cards.Clear();
@@ -29,7 +31,10 @@ public partial class LineViewModel : ObservableObject
         {
             if (!previous.TryGetValue(item.Id, out var card))
             {
-                card = new HangingCardViewModel(item, ImageLoader.FromFile(item.Path, 360));
+                var image = item.Id == flyingId && flyingImage is not null
+                    ? flyingImage
+                    : ImageLoader.FromFile(item.Path, 480);
+                card = new HangingCardViewModel(item, image);
             }
 
             card.Flying = flyingId == item.Id;
@@ -42,13 +47,14 @@ public partial class LineViewModel : ObservableObject
 
     public HangingCardViewModel? Find(Guid id) => Cards.FirstOrDefault(card => card.Id == id);
 
-    public void Layout(double width)
+    public void Layout(double width, double ropeTop = LineLayout.RopeTop)
     {
         if (width > 0)
         {
             _width = width;
         }
 
+        _ropeTop = ropeTop;
         var count = Cards.Count;
         for (var index = 0; index < count; index++)
         {
@@ -58,8 +64,20 @@ public partial class LineViewModel : ObservableObject
             card.PhotoWidth = photo.Width;
             card.PhotoHeight = photo.Height;
             card.ChromeWidth = photo.Width + LineLayout.FrameInset * 2;
-            card.Left = x - card.ChromeWidth / 2;
-            card.Top = LineLayout.RopeY(x, _width) - 6;
+            card.ChromeHeight = LineLayout.FrameTop + photo.Height + LineLayout.FrameInset * 2;
+            card.ClipLeft = (card.ChromeWidth - LineLayout.ClipWidth) / 2;
+            card.FrameTop = LineLayout.FrameTop;
+            var left = x - card.ChromeWidth / 2;
+            var top = LineLayout.CardTop(LineLayout.RopeY(x, _width, _ropeTop));
+            if (card.Placed && !card.Flying)
+            {
+                card.ShiftKickX += card.Left - left;
+                card.ShiftKickY += card.Top - top;
+            }
+
+            card.Left = left;
+            card.Top = top;
+            card.Placed = true;
             var edge = Math.Min(x, _width - x);
             card.Opacity = card.Flying ? 0 : Math.Clamp(edge / 80, 0, 1);
         }
@@ -91,7 +109,8 @@ public partial class LineViewModel : ObservableObject
         }
 
         card.Flying = false;
-        Layout(_width);
+        card.SwingKick = Motion.LandingSwing;
+        Layout(_width, _ropeTop);
     }
 
     public void RequestCopy(Guid id) => CopyRequested?.Invoke(this, id);

@@ -37,6 +37,30 @@ public class LineLayoutTests
     }
 
     [Fact]
+    public void Frame_HangsBelowAVisibleClip()
+    {
+        Assert.True(LineLayout.ClipHeight >= 36);
+        Assert.True(LineLayout.ClipGap >= 8);
+        Assert.Equal(LineLayout.ClipHeight + LineLayout.ClipGap, LineLayout.FrameTop);
+
+        const double rope = 40;
+        var frame = LineLayout.CardTop(rope) + LineLayout.FrameTop;
+        Assert.True(frame > rope + 20);
+        var panel = LineLayout.PanelHeightFor(rope);
+        Assert.True(panel > frame + LineLayout.PhotoMaxHeight);
+    }
+
+    [Fact]
+    public void CaptionFallback_LiftsTheRope_AndThePanelCoversTheGap()
+    {
+        Assert.Equal(32, LineLayout.CaptionFallback);
+        Assert.Equal(LineLayout.CaptionFallback, CaptionBand.FallbackDip);
+        Assert.Equal(LineLayout.CaptionFallback, LineLayout.RopeY(0, 1000, LineLayout.CaptionFallback));
+        var panel = LineLayout.PanelHeightFor(LineLayout.CaptionFallback);
+        Assert.True(panel > LineLayout.CaptionFallback + LineLayout.FrameTop + LineLayout.PhotoMaxHeight);
+    }
+
+    [Fact]
     public void TopBand_GrowsWithDpi()
     {
         var low = new MonitorBounds("DISPLAY", 0, 0, 1920, 1080, 96, 96);

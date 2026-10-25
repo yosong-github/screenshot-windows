@@ -3,9 +3,9 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using Pegline.App.Session;
 using Pegline.App.ViewModels;
+using Pegline.Core.Abstractions;
 using Pegline.Core.Domain;
 using Pegline.Platform.Win32;
 
@@ -17,30 +17,32 @@ public partial class LineWindow : Window
     private const int NoActivate = 3;
 
     private readonly LineViewModel _model;
+    private readonly IDisplayEnvironment _displays;
+    private readonly Dictionary<Guid, CardMotion> _motion = new();
     private IntPtr _hwnd;
     private bool _clickThrough = true;
     private bool _allowClose;
     private bool _placing;
-    private int _revealGeneration;
+    private bool _clock;
+    private bool _followUp;
+    private TimeSpan _lastFrame;
+    private Spring1D _slide = new(-LineLayout.PanelHeightFor(LineLayout.CaptionFallback), 0);
+    private double _slideTarget = -LineLayout.PanelHeightFor(LineLayout.CaptionFallback);
+    private double _ropeTop = LineLayout.CaptionFallback;
+    private double _panelHeight = LineLayout.PanelHeightFor(LineLayout.CaptionFallback);
     private MonitorBounds? _anchor;
 
-    public LineWindow(LineViewModel model)
+    public LineWindow(LineViewModel model, IDisplayEnvironment displays)
     {
         InitializeComponent();
         _model = model;
+        _displays = displays;
         DataContext = model;
         model.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(LineViewModel.IsRevealed))
             {
                 ApplyReveal(model.IsRevealed);
-            }
-        };
-        DpiChanged += (_, _) =>
-        {
-            if (IsVisible)
-            {
-                Place();
             }
         };
     }
@@ -55,9 +57,10 @@ public partial class LineWindow : Window
 
     public void HideImmediate()
     {
-        _revealGeneration++;
-        Slide.BeginAnimation(TranslateTransform.YProperty, null);
-        Slide.Y = -LineLayout.PanelHeight;
+        StopClock();
+        _slide = new Spring1D(-_panelHeight, 0);
+        _slideTarget = -_panelHeight;
+        Slide.Y = -_panelHeight;
         if (IsVisible)
         {
             Hide();
@@ -71,11 +74,11 @@ public partial class LineWindow : Window
             return false;
         }
 
-        var panel = (int)Math.Round(LineLayout.PanelHeight * (monitor.DpiY / 96.0));
+        var panel = Math.Max(1, DisplayScale.ToPhysical(_panelHeight, monitor.DpiY));
         return cursor.X >= monitor.Left
             && cursor.X < monitor.Left + monitor.Width
             && cursor.Y >= monitor.Top
-            && cursor.Y < monitor.Top + Math.Max(panel, 1);
+            && cursor.Y < monitor.Top + panel;
     }
 
     public void UpdateClickThrough(MousePoint cursor)
@@ -95,22 +98,21 @@ public partial class LineWindow : Window
         _clickThrough = through;
     }
 
-    public async Task FlyAsync(ImageSource image, Rect from, Guid id)
+    public Rect RestingScreenRect(Guid id)
     {
-        try
+        var card = _model.Find(id);
+        if (card is null || card.ChromeWidth < 2 || card.ChromeHeight < 2)
         {
-            UpdateLayout();
-            _model.Layout(Width);
-            var to = CardScreenRect(id);
-            if (to is { } destination)
-            {
-                await FlightWindow.Play(image, from, destination);
-            }
+            return Rect.Empty;
         }
-        finally
-        {
-            _model.MarkLanded(id);
-        }
+
+        var origin = PointToScreen(new Point(card.Left, card.Top));
+        return new Rect(origin.X, origin.Y, card.ChromeWidth, card.ChromeHeight);
+    }
+
+    public Task FlyAsync(ImageSource image, Rect from, Rect to, double tilt, Action? onArrive = null)
+    {
+        return FlightWindow.Play(image, from, to, tilt, onArrive);
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -122,6 +124,15 @@ public partial class LineWindow : Window
         HwndSource.FromHwnd(_hwnd)?.AddHook(Hook);
     }
 
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        if (IsVisible)
+        {
+            Place();
+        }
+    }
+
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         if (!_allowClose)
@@ -130,13 +141,25 @@ public partial class LineWindow : Window
             return;
         }
 
+        StopClock();
         base.OnClosing(e);
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
         DrawRope();
-        _model.Layout(ActualWidth);
+        _model.Layout(ActualWidth, _ropeTop);
+    }
+
+    private void CardHover(object sender, MouseEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: HangingCardViewModel card })
+        {
+            return;
+        }
+
+        card.Hovered = e.RoutedEvent == Mouse.MouseEnterEvent;
+        StartClock();
     }
 
     private void CardClicked(object sender, MouseButtonEventArgs e)
@@ -163,28 +186,37 @@ public partial class LineWindow : Window
 
     private void ApplyReveal(bool show)
     {
-        var generation = ++_revealGeneration;
         if (show)
         {
-            if (!IsVisible && _anchor is { } monitor)
+            var hidden = !IsVisible;
+            if (hidden && _anchor is { } monitor)
             {
-                var scaleX = Math.Max(1, monitor.DpiX) / 96.0;
-                var scaleY = Math.Max(1, monitor.DpiY) / 96.0;
+                _ropeTop = _displays.CaptionHeightDip(monitor.DpiY);
+                _panelHeight = LineLayout.PanelHeightFor(_ropeTop);
+                var scaleX = DisplayScale.Factor(monitor.DpiX);
+                var scaleY = DisplayScale.Factor(monitor.DpiY);
                 Left = monitor.Left / scaleX;
                 Top = monitor.Top / scaleY;
                 Width = Math.Max(1, monitor.Width / scaleX);
-                Height = LineLayout.PanelHeight;
+                Height = _panelHeight;
+                _slide = new Spring1D(-_panelHeight, 0);
+                Slide.Y = -_panelHeight;
             }
 
-            if (!IsVisible)
+            if (hidden)
             {
                 Show();
             }
 
             Place();
-            Slide.BeginAnimation(TranslateTransform.YProperty, null);
-            Slide.Y = -LineLayout.PanelHeight;
-            Slide.BeginAnimation(TranslateTransform.YProperty, SlideTo(0, 240, EasingMode.EaseOut));
+            if (hidden)
+            {
+                _slide = new Spring1D(-_panelHeight, 0);
+                Slide.Y = -_panelHeight;
+            }
+
+            _slideTarget = 0;
+            StartClock();
             return;
         }
 
@@ -193,18 +225,36 @@ public partial class LineWindow : Window
             return;
         }
 
-        var hide = SlideTo(-LineLayout.PanelHeight, 180, EasingMode.EaseIn);
-        hide.Completed += (_, _) =>
-        {
-            if (generation == _revealGeneration && !_model.IsRevealed && IsVisible)
-            {
-                Hide();
-            }
-        };
-        Slide.BeginAnimation(TranslateTransform.YProperty, hide);
+        _slideTarget = -_panelHeight;
+        _slide = _slide.Kick(Math.Max(_slide.Velocity, Motion.RetractKick));
+        StartClock();
     }
 
     private void Place()
+    {
+        if (_anchor is null)
+        {
+            return;
+        }
+
+        ApplyPlace();
+        if (_followUp)
+        {
+            return;
+        }
+
+        _followUp = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _followUp = false;
+            if (IsVisible)
+            {
+                ApplyPlace();
+            }
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void ApplyPlace()
     {
         if (_placing || _anchor is not { } monitor)
         {
@@ -214,9 +264,19 @@ public partial class LineWindow : Window
         _placing = true;
         try
         {
-            MonitorFit.Apply(this, monitor, LineLayout.PanelHeight, activate: false);
+            _ropeTop = _displays.CaptionHeightDip(monitor.DpiY);
+            _panelHeight = LineLayout.PanelHeightFor(_ropeTop);
+            if (_slideTarget < 0)
+            {
+                _slideTarget = -_panelHeight;
+            }
+
+            Height = _panelHeight;
+            MonitorFit.Apply(this, monitor, _panelHeight, activate: false);
+            RopeHost.Height = _ropeTop + LineLayout.MaxSag + 24;
+            Hint.Margin = new Thickness(24, _ropeTop + 28, 24, 0);
             DrawRope();
-            _model.Layout(Width);
+            _model.Layout(Width, _ropeTop);
         }
         finally
         {
@@ -232,7 +292,7 @@ public partial class LineWindow : Window
             return;
         }
 
-        var curve = LineLayout.Rope(width);
+        var curve = LineLayout.Rope(width, _ropeTop);
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
@@ -250,32 +310,114 @@ public partial class LineWindow : Window
         RopeHighlight.Data = geometry;
     }
 
-    private Rect? CardScreenRect(Guid id)
+    private void StartClock()
     {
-        for (var index = 0; index < CardList.Items.Count; index++)
+        if (_clock)
         {
-            if (CardList.ItemContainerGenerator.ContainerFromIndex(index) is not ContentPresenter presenter)
-            {
-                continue;
-            }
-
-            if (presenter.DataContext is not HangingCardViewModel card || card.Id != id)
-            {
-                continue;
-            }
-
-            presenter.UpdateLayout();
-            if (presenter.ActualWidth < 2 || presenter.ActualHeight < 2)
-            {
-                return null;
-            }
-
-            var origin = presenter.PointToScreen(new Point(0, 0));
-            // PointToScreen includes the glide transform. Land on the resting slot.
-            return new Rect(origin.X, origin.Y - Slide.Y, presenter.ActualWidth, presenter.ActualHeight);
+            return;
         }
 
-        return null;
+        _clock = true;
+        _lastFrame = TimeSpan.Zero;
+        CompositionTarget.Rendering += OnFrame;
+    }
+
+    private void StopClock()
+    {
+        if (!_clock)
+        {
+            return;
+        }
+
+        _clock = false;
+        CompositionTarget.Rendering -= OnFrame;
+    }
+
+    private void OnFrame(object? sender, EventArgs e)
+    {
+        if (e is not RenderingEventArgs timing)
+        {
+            return;
+        }
+
+        var dt = _lastFrame == TimeSpan.Zero ? 1.0 / 60 : (timing.RenderingTime - _lastFrame).TotalSeconds;
+        _lastFrame = timing.RenderingTime;
+        dt = Math.Clamp(dt, 0.001, 0.05);
+
+        _slide = _slide.Step(_slideTarget, dt, Motion.Slide);
+        Slide.Y = _slide.Value;
+        var lag = Math.Clamp(-_slide.Velocity * Motion.SwingLag, -Motion.MaxLagSwing, Motion.MaxLagSwing);
+        var busy = !_slide.IsResting(_slideTarget, Motion.Slide);
+
+        var live = new HashSet<Guid>();
+        foreach (var card in _model.Cards)
+        {
+            live.Add(card.Id);
+            if (!_motion.TryGetValue(card.Id, out var motion))
+            {
+                motion = new CardMotion
+                {
+                    Scale = new Spring1D(1, 0),
+                    Shadow = new Spring1D(0, 0),
+                };
+                _motion[card.Id] = motion;
+            }
+
+            if (card.ShiftKickX != 0 || card.ShiftKickY != 0)
+            {
+                motion.ShiftX = new Spring1D(motion.ShiftX.Value + card.ShiftKickX, motion.ShiftX.Velocity);
+                motion.ShiftY = new Spring1D(motion.ShiftY.Value + card.ShiftKickY, motion.ShiftY.Velocity);
+                card.ShiftKickX = 0;
+                card.ShiftKickY = 0;
+            }
+
+            if (card.SwingKick != 0)
+            {
+                motion.Swing = new Spring1D(card.SwingKick, motion.Swing.Velocity);
+                card.SwingKick = 0;
+            }
+
+            var swingTarget = lag + (card.Hovered ? Motion.HoverSwing : 0);
+            motion.Swing = motion.Swing.Step(swingTarget, dt, Motion.Swing);
+            var scaleTarget = card.Hovered ? Motion.HoverScale : 1;
+            motion.Scale = motion.Scale.Step(scaleTarget, dt, Motion.Hover);
+            motion.ShiftX = motion.ShiftX.Step(0, dt, Motion.Shift);
+            motion.ShiftY = motion.ShiftY.Step(0, dt, Motion.Shift);
+            motion.Close = motion.Close.Step(card.Hovered ? 1 : 0, dt, Motion.Fade);
+            motion.Shadow = motion.Shadow.Step(card.Hovered ? 1 : 0, dt, Motion.Hover);
+
+            card.VisualAngle = card.Tilt + motion.Swing.Value;
+            card.HoverScale = motion.Scale.Value;
+            card.ShiftX = motion.ShiftX.Value;
+            card.ShiftY = motion.ShiftY.Value;
+            card.CloseOpacity = motion.Close.Value;
+            card.ShadowBlur = 12 + 8 * motion.Shadow.Value;
+            card.ShadowDepth = 5 + 3 * motion.Shadow.Value;
+            card.ShadowOpacity = 0.22 + 0.16 * motion.Shadow.Value;
+
+            busy |= card.Hovered
+                || !motion.Swing.IsResting(swingTarget, Motion.Swing)
+                || !motion.Scale.IsResting(scaleTarget, Motion.Hover)
+                || !motion.ShiftX.IsResting(0, Motion.Shift)
+                || !motion.ShiftY.IsResting(0, Motion.Shift)
+                || !motion.Close.IsResting(card.Hovered ? 1 : 0, Motion.Fade);
+        }
+
+        foreach (var id in _motion.Keys.Where(id => !live.Contains(id)).ToArray())
+        {
+            _motion.Remove(id);
+        }
+
+        if (_slideTarget < 0 && _slide.IsResting(_slideTarget, Motion.Slide) && !_model.IsRevealed && IsVisible)
+        {
+            Hide();
+            busy = false;
+        }
+
+        if (!busy)
+        {
+            StopClock();
+        }
     }
 
     private bool IsOverCard(MousePoint cursor)
@@ -311,12 +453,6 @@ public partial class LineWindow : Window
         return new IntPtr(NoActivate);
     }
 
-    private static DoubleAnimation SlideTo(double to, int milliseconds, EasingMode mode) =>
-        new(to, TimeSpan.FromMilliseconds(milliseconds))
-        {
-            EasingFunction = new QuadraticEase { EasingMode = mode },
-        };
-
     private static bool IsInsideButton(DependencyObject? source)
     {
         while (source is not null)
@@ -330,5 +466,15 @@ public partial class LineWindow : Window
         }
 
         return false;
+    }
+
+    private sealed class CardMotion
+    {
+        public Spring1D Swing;
+        public Spring1D Scale;
+        public Spring1D ShiftX;
+        public Spring1D ShiftY;
+        public Spring1D Close;
+        public Spring1D Shadow;
     }
 }

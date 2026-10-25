@@ -33,15 +33,26 @@ public static class ImageLoader
 
     public static ImageSource FromFrame(Pegline.Core.Domain.FrozenMonitor frame)
     {
-        var bitmap = BitmapSource.Create(
-            frame.PixelWidth,
-            frame.PixelHeight,
-            96,
-            96,
-            PixelFormats.Bgr32,
-            null,
-            frame.Bgra32,
-            frame.Stride);
+        var dpiX = frame.Monitor.DpiX == 0 ? 96 : frame.Monitor.DpiX;
+        var dpiY = frame.Monitor.DpiY == 0 ? 96 : frame.Monitor.DpiY;
+        return FromPixels(frame.PixelWidth, frame.PixelHeight, frame.Bgra32, frame.Stride, dpiX, dpiY, PixelFormats.Bgr32);
+    }
+
+    public static ImageSource FromPixels(int width, int height, byte[] bgra, int stride, double dpiX, double dpiY)
+    {
+        return FromPixels(width, height, bgra, stride, dpiX, dpiY, PixelFormats.Bgra32);
+    }
+
+    private static ImageSource FromPixels(
+        int width,
+        int height,
+        byte[] bgra,
+        int stride,
+        double dpiX,
+        double dpiY,
+        PixelFormat format)
+    {
+        var bitmap = BitmapSource.Create(width, height, dpiX, dpiY, format, null, bgra, stride);
         bitmap.Freeze();
         return bitmap;
     }

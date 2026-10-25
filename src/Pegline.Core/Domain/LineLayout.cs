@@ -11,27 +11,63 @@ public static class LineLayout
     public const double FrameInset = 4;
     public const double Spacing = CardWidth + 24;
     public const double RopeTop = 10;
-    public const double PanelHeight = PhotoMaxHeight + 106;
+
+    /// <summary>
+    /// Resting gap when caption metrics are unavailable. About the title-bar height
+    /// of a maximized window at 100% (SM_CYCAPTION + SM_CYFRAME + SM_CXPADDEDBORDER).
+    /// </summary>
+    public const double CaptionFallback = 32;
     public const double MinTilt = -2.5;
     public const double MaxTilt = 2.5;
+    public const double MaxSag = 30;
 
-    public static double Sag(double width) => Math.Min(30, Math.Max(0, width) * 0.018);
+    /// <summary>Aluminium clip. It grips the rope and hangs clear of the frame.</summary>
+    public const double ClipWidth = 16;
 
-    public static double RopeY(double x, double width)
+    public const double ClipHeight = 42;
+
+    /// <summary>How far the top of the clip sits above the rope.</summary>
+    public const double ClipOverhang = 10;
+
+    /// <summary>Empty space between the bottom of the clip and the photo frame.</summary>
+    public const double ClipGap = 10;
+
+    public const double ShadowRoom = 40;
+
+    /// <summary>Y of the frame inside the pegged view.</summary>
+    public static double FrameTop => ClipHeight + ClipGap;
+
+    public static double CardTop(double ropeY) => ropeY - ClipOverhang;
+
+    public static double Sag(double width) => Math.Min(MaxSag, Math.Max(0, width) * 0.018);
+
+    public static double RopeY(double x, double width, double ropeTop = RopeTop)
     {
         if (width <= 0)
         {
-            return RopeTop;
+            return ropeTop;
         }
 
         var f = x / width;
-        return RopeTop + 4 * Sag(width) * f * (1 - f);
+        return ropeTop + 4 * Sag(width) * f * (1 - f);
     }
 
-    public static RopeCurve Rope(double width)
+    public static RopeCurve Rope(double width, double ropeTop = RopeTop)
     {
         var sag = Sag(width);
-        return new RopeCurve(-20, RopeTop, width / 2, RopeTop + 2 * sag, width + 20, RopeTop);
+        return new RopeCurve(-20, ropeTop, width / 2, ropeTop + 2 * sag, width + 20, ropeTop);
+    }
+
+    /// <summary>
+    /// Window height for a rope whose resting top is <paramref name="ropeTop"/> DIPs
+    /// below the top of the monitor. The caption gap is included, so the hit area
+    /// covers the space between the screen edge and the photos.
+    /// </summary>
+    public static double PanelHeightFor(double ropeTop)
+    {
+        var lowestRope = ropeTop + MaxSag;
+        var cardTop = CardTop(lowestRope);
+        return cardTop + FrameTop + PhotoMaxHeight + FrameInset * 2 + ShadowRoom;
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Pegline.App.Imaging;
 using Pegline.App.Session;
 using Pegline.Core.Domain;
@@ -25,8 +26,13 @@ public partial class CaptureOverlayWindow : Window
         Shot.Source = ImageLoader.FromFrame(frame);
         SourceInitialized += (_, _) => Fit(activate: false);
         Loaded += (_, _) => Fit(activate: false);
-        DpiChanged += (_, _) => Fit(activate: false);
         SizeChanged += (_, _) => Cover();
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        Fit(activate: false);
     }
 
     public event EventHandler<SelectedRegion>? Committed;
@@ -144,7 +150,25 @@ public partial class CaptureOverlayWindow : Window
         Cancelled?.Invoke(this, EventArgs.Empty);
     }
 
+    private bool _refit;
+
     private void Fit(bool activate)
+    {
+        ApplyFit(activate);
+        if (_refit)
+        {
+            return;
+        }
+
+        _refit = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _refit = false;
+            ApplyFit(activate);
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void ApplyFit(bool activate)
     {
         if (_fitting)
         {
@@ -155,6 +179,8 @@ public partial class CaptureOverlayWindow : Window
         try
         {
             MonitorFit.Apply(this, _frame.Monitor, null, activate);
+            Shot.Width = Width;
+            Shot.Height = Height;
             Cover();
         }
         finally

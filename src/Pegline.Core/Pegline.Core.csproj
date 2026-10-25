@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Pegline.Core</RootNamespace>
+    <Description>Domain model and platform contracts for Pegline. No Win32 types.</Description>
+  </PropertyGroup>
+</Project>

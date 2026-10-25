@@ -21,6 +21,11 @@ public interface IDisplayEnvironment
     IReadOnlyList<MonitorBounds> QueryMonitors();
 
     MousePoint QueryCursor();
+
+    /// <summary>
+    /// Caption height of a maximized window, in DIPs, for a monitor at <paramref name="dpi"/>.
+    /// </summary>
+    double CaptionHeightDip(uint dpi);
 }
 
 /// <summary>Freezes each monitor in physical pixels and crops a region to PNG.</summary>

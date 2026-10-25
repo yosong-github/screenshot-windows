@@ -1,9 +1,11 @@
 using System.Windows;
 using System.Windows.Threading;
+using Pegline.App.Imaging;
 using Pegline.App.ViewModels;
 using Pegline.App.Views;
 using Pegline.Core.Abstractions;
 using Pegline.Core.Domain;
+using Pegline.Platform.Imaging;
 
 namespace Pegline.App.Session;
 
@@ -178,30 +180,38 @@ public sealed class LineSession
                 return;
             }
 
-            var png = _screen.CropToPng(shot.Frame, shot.Region);
-            var path = _captures.Save(png, DateTimeOffset.Now);
-            var outcome = _line.Hang(path, shot.Region.Width, shot.Region.Height);
+            _window.Anchor = shot.Frame.Monitor;
+            _reveal.Peek(DateTimeOffset.Now);
+            _model.IsRevealed = true;
+
+            var takenAt = DateTimeOffset.Now;
+            var prepared = await Task.Run(() =>
+            {
+                var png = _screen.CropToPng(shot.Frame, shot.Region);
+                var path = _captures.Save(png, takenAt);
+                var thumb = PngImages.Thumbnail(png, 960);
+                return (path, thumb);
+            }).ConfigureAwait(true);
+
+            var outcome = _line.Hang(prepared.path, shot.Region.Width, shot.Region.Height);
             if (outcome.Item is not { } item)
             {
                 return;
             }
 
-            _window.Anchor = shot.Frame.Monitor;
-            _reveal.Peek(DateTimeOffset.Now);
-            _model.Replace(_line.Items, item.Id);
-            _model.IsRevealed = true;
+            var image = ImageLoader.FromPixels(
+                prepared.thumb.Width,
+                prepared.thumb.Height,
+                prepared.thumb.Pixels,
+                prepared.thumb.Stride,
+                96,
+                96);
+            _model.Replace(_line.Items, item.Id, image);
             Persist();
-            var image = _model.Find(item.Id)?.Image;
-            if (image is not null)
-            {
-                await _window.FlyAsync(image, shot.ScreenDip, item.Id).ConfigureAwait(true);
-            }
-            else
-            {
-                _model.MarkLanded(item.Id);
-            }
+            var destination = _window.RestingScreenRect(item.Id);
+            await _window.FlyAsync(image, shot.ScreenDip, destination, item.TiltDegrees, () => _model.MarkLanded(item.Id)).ConfigureAwait(true);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Runtime.InteropServices.ExternalException)
         {
             MessageBox.Show(
                 "Couldn't save the screenshot.\n无法保存截图。\n" + ex.Message,

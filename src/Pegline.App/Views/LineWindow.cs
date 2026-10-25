@@ -98,21 +98,39 @@ public partial class LineWindow : Window
         _clickThrough = through;
     }
 
-    public Rect RestingScreenRect(Guid id)
+    public void Wake() => StartClock();
+
+    /// <summary>
+    /// The photo frame in this monitor's DIP space, including the slide and the neighbour shift.
+    /// The origin matches a flight window fitted to the same monitor.
+    /// </summary>
+    public (DipRect Frame, double Angle)? TryLiveFrame(Guid id)
     {
         var card = _model.Find(id);
-        if (card is null || card.ChromeWidth < 2 || card.ChromeHeight < 2)
+        if (card is null || card.ChromeWidth < 2 || card.FrameHeight < 2)
         {
-            return Rect.Empty;
+            return null;
         }
 
-        var origin = PointToScreen(new Point(card.Left, card.Top));
-        return new Rect(origin.X, origin.Y, card.ChromeWidth, card.ChromeHeight);
+        var x = card.Left + card.ShiftX;
+        var y = card.Top + card.ShiftY + Slide.Y + card.FrameTop;
+        return (new DipRect(x, y, card.ChromeWidth, card.FrameHeight), card.VisualAngle);
     }
 
-    public Task FlyAsync(ImageSource image, Rect from, Rect to, double tilt, Action? onArrive = null)
+    public Task FlyAsync(
+        ImageSource image,
+        MonitorBounds monitor,
+        DipRect from,
+        Guid id,
+        Action onShown,
+        Action onArrive,
+        Task hold)
     {
-        return FlightWindow.Play(image, from, to, tilt, onArrive);
+        var card = _model.Find(id);
+        var edge = card?.ClipEdge ?? Color.FromRgb(92, 92, 92);
+        var body = card?.ClipBody ?? Color.FromRgb(212, 212, 212);
+        var shine = card?.ClipShine ?? Color.FromRgb(247, 247, 247);
+        return FlightWindow.Play(image, monitor, from, () => TryLiveFrame(id), hold, onShown, onArrive, edge, body, shine);
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -277,6 +295,7 @@ public partial class LineWindow : Window
             Hint.Margin = new Thickness(24, _ropeTop + 28, 24, 0);
             DrawRope();
             _model.Layout(Width, _ropeTop);
+            _model.SetCacheScale(VisualTreeHelper.GetDpi(this).DpiScaleY);
         }
         finally
         {
@@ -373,8 +392,18 @@ public partial class LineWindow : Window
 
             if (card.SwingKick != 0)
             {
-                motion.Swing = new Spring1D(card.SwingKick, motion.Swing.Velocity);
-                card.SwingKick = 0;
+                if (!card.SwingArm)
+                {
+                    card.SwingArm = true;
+                }
+                else
+                {
+                    motion.Swing = new Spring1D(motion.Swing.Value, motion.Swing.Velocity + card.SwingKick);
+                    card.SwingKick = 0;
+                    card.SwingArm = false;
+                }
+
+                busy = true;
             }
 
             var swingTarget = lag + (card.Hovered ? Motion.HoverSwing : 0);
@@ -395,7 +424,8 @@ public partial class LineWindow : Window
             card.ShadowDepth = 5 + 3 * motion.Shadow.Value;
             card.ShadowOpacity = 0.22 + 0.16 * motion.Shadow.Value;
 
-            busy |= card.Hovered
+            busy |= card.AdvanceTint(dt)
+                || card.Hovered
                 || !motion.Swing.IsResting(swingTarget, Motion.Swing)
                 || !motion.Scale.IsResting(scaleTarget, Motion.Hover)
                 || !motion.ShiftX.IsResting(0, Motion.Shift)

@@ -37,15 +37,22 @@ public class LineLayoutTests
     }
 
     [Fact]
-    public void Frame_HangsBelowAVisibleClip()
+    public void Jaws_BiteTheFrame_AndTheGripSitsOnTheRope()
     {
-        Assert.True(LineLayout.ClipHeight >= 36);
-        Assert.True(LineLayout.ClipGap >= 8);
-        Assert.Equal(LineLayout.ClipHeight + LineLayout.ClipGap, LineLayout.FrameTop);
+        Assert.InRange(LineLayout.JawOverlap, 8, 12);
+        Assert.Equal(LineLayout.ClipHeight - LineLayout.JawOverlap, LineLayout.FrameTop);
+        Assert.Equal(LineLayout.FrameRadius - LineLayout.FrameInset - LineLayout.FrameBorder, LineLayout.PhotoRadius);
+        Assert.True(LineLayout.PhotoRadius > 0);
+        Assert.True(LineLayout.FramePivotOffset < 0);
+        Assert.Equal(LineLayout.ClipOverhang - LineLayout.FrameTop, LineLayout.FramePivotOffset);
 
         const double rope = 40;
-        var frame = LineLayout.CardTop(rope) + LineLayout.FrameTop;
-        Assert.True(frame > rope + 20);
+        var cardTop = LineLayout.CardTop(rope);
+        Assert.Equal(rope, cardTop + LineLayout.ClipOverhang, 3);
+        var frame = cardTop + LineLayout.FrameTop;
+        var clipBottom = cardTop + LineLayout.ClipHeight;
+        Assert.Equal(LineLayout.JawOverlap, clipBottom - frame, 3);
+        Assert.True(LineLayout.ClipOverhang < LineLayout.FrameTop);
         var panel = LineLayout.PanelHeightFor(rope);
         Assert.True(panel > frame + LineLayout.PhotoMaxHeight);
     }

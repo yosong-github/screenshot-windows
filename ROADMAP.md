@@ -16,8 +16,8 @@ Phase 1 is what this version ships. Later items are listed only.
 - [x] DPI-correct crop (physical pixels). PNG saved to `Pictures\screenshot-windows` (else `%LOCALAPPDATA%\screenshot-windows\Captures`). Capture sits behind `IScreenCapture`
 - [x] 立刻挂到绳子上，并有一段飞向绳子的动画
 - [x] Hung on the line immediately, with a short fly-to-line animation
-- [x] 指针停在屏幕上沿时绳子滑下，离开后收起
-- [x] The line glides down when the pointer rests on the top edge, and tucks away when it leaves
+- [x] 屏幕上沿先露出居中的小把手，停在把手上绳子才滑下，离开后收起
+- [x] The top edge drops a centered handle; resting on the handle glides the line down, and leaving tucks it away
 - [x] 带相框和夹子的缩略图
 - [x] Framed thumbnails with a clip
 - [x] 点击复制 PNG

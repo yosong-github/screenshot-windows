@@ -15,8 +15,8 @@ public readonly record struct MonitorBounds(
     public bool Contains(int x, int y) =>
         x >= Left && x < Left + Width && y >= Top && y < Top + Height;
 
-    /// <summary>About 18 device-independent pixels, so the top edge is easy to rest on at any scale.</summary>
-    public int TopBandPixels => Math.Max(8, (int)Math.Round(18 * (DpiY / 96.0)));
+    /// <summary>A few physical pixels at the top edge. The band does not grow with DPI, so a title bar is not the edge.</summary>
+    public int TopBandPixels => LineLayout.EdgeBandPixels;
 
     public bool InTopBand(int x, int y) =>
         x >= Left && x < Left + Width && y >= Top && y < Top + TopBandPixels;
@@ -25,6 +25,9 @@ public readonly record struct MonitorBounds(
 public readonly record struct PixelRect(int X, int Y, int Width, int Height)
 {
     public bool IsEmpty => Width <= 0 || Height <= 0;
+
+    public bool Contains(int x, int y) =>
+        x >= X && x < X + Width && y >= Y && y < Y + Height;
 }
 
 public readonly record struct RopeCurve(

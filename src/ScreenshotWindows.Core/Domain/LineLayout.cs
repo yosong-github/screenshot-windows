@@ -41,6 +41,19 @@ public static class LineLayout
 
     public const double ShadowRoom = 40;
 
+    /// <summary>White tab that drops from the top center of the monitor. The line stays up until the pointer rests on it.</summary>
+    public const double HandleWidth = 72;
+
+    public const double HandleHeight = 8;
+
+    public const double HandleRadius = 4;
+
+    /// <summary>Room under the tab so its shadow is not clipped by the window.</summary>
+    public const double HandleShadowRoom = 8;
+
+    /// <summary>Top-edge hit band, in physical pixels. A few pixels, so the title bar does not count.</summary>
+    public const int EdgeBandPixels = 4;
+
     /// <summary>Y of the frame inside the pegged view. The clip continues past this edge.</summary>
     public static double FrameTop => ClipHeight - JawOverlap;
 
@@ -105,4 +118,16 @@ public static class LineLayout
         var scale = Math.Min(maxW / pixelWidth, maxH / pixelHeight);
         return (pixelWidth * scale, pixelHeight * scale);
     }
+
+    /// <summary>The tab rectangle in physical pixels, centered on the monitor's top edge.</summary>
+    public static PixelRect HandleBounds(MonitorBounds monitor)
+    {
+        var width = Math.Max(1, DisplayScale.ToPhysical(HandleWidth, monitor.DpiX));
+        var height = Math.Max(1, DisplayScale.ToPhysical(HandleHeight, monitor.DpiY));
+        var x = monitor.Left + (monitor.Width - width) / 2;
+        return new PixelRect(x, monitor.Top, width, height);
+    }
+
+    public static bool ContainsHandle(MonitorBounds monitor, int x, int y) =>
+        HandleBounds(monitor).Contains(x, y);
 }

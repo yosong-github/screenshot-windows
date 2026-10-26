@@ -16,6 +16,8 @@ public partial class LineViewModel : ObservableObject
 
     [ObservableProperty] private bool _isRevealed;
 
+    [ObservableProperty] private bool _isHandleShown;
+
     [ObservableProperty] private bool _showHint = true;
 
     [ObservableProperty] private string _captureShortcut = HotkeyChord.CaptureDefault.ToDisplay();

@@ -12,6 +12,12 @@ public static class Motion
 
     public static readonly TimeSpan TintFade = TimeSpan.FromMilliseconds(180);
 
+    /// <summary>How long the pointer must rest on the handle before the line comes down.</summary>
+    public static readonly TimeSpan HandleDwell = TimeSpan.FromMilliseconds(120);
+
+    /// <summary>How long the handle stays after the pointer leaves the top edge without resting on it.</summary>
+    public static readonly TimeSpan HandleRetractDelay = TimeSpan.FromMilliseconds(500);
+
     public const double FlightArc = 18;
 
     public const double HoverScale = 1.06;
@@ -34,6 +40,9 @@ public static class Motion
     public const double MaxLagSwing = 4.5;
 
     public static SpringConfig Slide { get; } = new(290, 22.5, 0.35, 6);
+
+    /// <summary>Short drop for the handle. The travel is only the tab height.</summary>
+    public static SpringConfig Handle { get; } = new(420, 28, 0.2, 4);
 
     public static SpringConfig Swing { get; } = new(78, 11.5, 0.08, 1.2);
 

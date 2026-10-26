@@ -105,6 +105,7 @@ public sealed class LineSession
 
         _window.Anchor = anchor;
         _reveal.Peek(DateTimeOffset.Now);
+        _model.IsHandleShown = false;
         _model.IsRevealed = true;
         _ = TintUnknownAsync();
     }
@@ -136,6 +137,7 @@ public sealed class LineSession
         }
 
         _reveal.Toggle(DateTimeOffset.Now, _line.Count);
+        _model.IsHandleShown = _reveal.IsHandleShown;
         _model.IsRevealed = _reveal.IsRevealed;
     }
 
@@ -168,6 +170,7 @@ public sealed class LineSession
     {
         try
         {
+            _model.IsHandleShown = false;
             _model.IsRevealed = false;
             _window.HideImmediate();
             await Task.Delay(40).ConfigureAwait(true);
@@ -190,6 +193,7 @@ public sealed class LineSession
 
             _window.Anchor = shot.Frame.Monitor;
             _reveal.Peek(DateTimeOffset.Now);
+            _model.IsHandleShown = false;
             _model.IsRevealed = true;
 
             var takenAt = DateTimeOffset.Now;
@@ -248,6 +252,11 @@ public sealed class LineSession
         {
             _overlay.Close();
             Volatile.Write(ref _busy, 0);
+            if (_model.IsHandleShown != _reveal.IsHandleShown)
+            {
+                _model.IsHandleShown = _reveal.IsHandleShown;
+            }
+
             if (_model.IsRevealed != _reveal.IsRevealed)
             {
                 _model.IsRevealed = _reveal.IsRevealed;
@@ -275,11 +284,21 @@ public sealed class LineSession
             now,
             _line.Count,
             under is { } band && band.InTopBand(cursor.X, cursor.Y),
+            under is { } handle && LineLayout.ContainsHandle(handle, cursor.X, cursor.Y),
             _window.IsInZone(cursor));
         var motion = _reveal.Advance(sample);
-        if (motion == LineMotion.Show && under is { } shown)
+        if (_reveal.IsHandleShown && under is { } host)
+        {
+            _window.Anchor = host;
+        }
+        else if (motion == LineMotion.Show && under is { } shown)
         {
             _window.Anchor = shown;
+        }
+
+        if (_model.IsHandleShown != _reveal.IsHandleShown)
+        {
+            _model.IsHandleShown = _reveal.IsHandleShown;
         }
 
         if (_model.IsRevealed != _reveal.IsRevealed)

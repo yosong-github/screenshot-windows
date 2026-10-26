@@ -16,7 +16,8 @@
         UseLayoutRounding="True"
         FontFamily="Segoe UI"
         SizeChanged="OnSizeChanged">
-  <Grid IsHitTestVisible="True">
+  <Grid>
+    <Grid x:Name="LineRoot" IsHitTestVisible="True">
     <Grid.RenderTransform>
       <TranslateTransform x:Name="Slide" Y="-280" />
     </Grid.RenderTransform>
@@ -145,11 +146,27 @@
                TextAlignment="Center" Foreground="#FF4A453C" FontSize="13"
                IsHitTestVisible="False"
                Visibility="{Binding ShowHint, Converter={StaticResource BoolVis}}">
-      <Run Text="Rest the pointer on the top edge, or press " />
+      <Run Text="Press " />
       <Run Text="{Binding CaptureShortcut, Mode=OneWay}" />
       <Run Text=" to take a shot." />
       <LineBreak />
-      <Run Text="指针停在屏幕上沿，或按快捷键截图。" />
+      <Run Text="按快捷键截图。" />
     </TextBlock>
+    </Grid>
+    <Border x:Name="HandleHost"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Background="#F8FFFFFF"
+            Visibility="Collapsed"
+            IsHitTestVisible="False">
+      <Border.RenderTransform>
+        <TranslateTransform x:Name="HandleSlide" />
+      </Border.RenderTransform>
+      <Border.Effect>
+        <DropShadowEffect BlurRadius="6" ShadowDepth="1.2" Direction="90" Opacity="0.32" Color="#FF000000" />
+      </Border.Effect>
+      <Border Width="16" Height="2" CornerRadius="1" Background="#4D3C3C3C"
+              HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Border>
   </Grid>
 </Window>

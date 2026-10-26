@@ -28,6 +28,10 @@ public partial class LineWindow : Window
     private TimeSpan _lastFrame;
     private Spring1D _slide = new(-LineLayout.PanelHeightFor(LineLayout.CaptionFallback), 0);
     private double _slideTarget = -LineLayout.PanelHeightFor(LineLayout.CaptionFallback);
+    private Spring1D _handleSlide = new(-LineLayout.HandleHeight, 0);
+    private double _handleTarget = -LineLayout.HandleHeight;
+    private bool _handleMode;
+    private bool _chromeQueued;
     private double _ropeTop = LineLayout.CaptionFallback;
     private double _panelHeight = LineLayout.PanelHeightFor(LineLayout.CaptionFallback);
     private MonitorBounds? _anchor;
@@ -38,11 +42,15 @@ public partial class LineWindow : Window
         _model = model;
         _displays = displays;
         DataContext = model;
+        HandleHost.Width = LineLayout.HandleWidth;
+        HandleHost.Height = LineLayout.HandleHeight;
+        HandleHost.CornerRadius = new CornerRadius(LineLayout.HandleRadius);
+        HandleSlide.Y = -LineLayout.HandleHeight;
         model.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(LineViewModel.IsRevealed))
+            if (args.PropertyName is nameof(LineViewModel.IsRevealed) or nameof(LineViewModel.IsHandleShown))
             {
-                ApplyReveal(model.IsRevealed);
+                QueueChrome();
             }
         };
     }
@@ -50,7 +58,18 @@ public partial class LineWindow : Window
     public MonitorBounds? Anchor
     {
         get => _anchor;
-        set => _anchor = value;
+        set
+        {
+            var moved = _anchor?.DeviceName != value?.DeviceName
+                || _anchor?.Left != value?.Left
+                || _anchor?.Top != value?.Top
+                || _anchor?.Width != value?.Width;
+            _anchor = value;
+            if (moved && _handleMode && IsVisible)
+            {
+                PlaceHandle();
+            }
+        }
     }
 
     public void AllowClose() => _allowClose = true;
@@ -58,9 +77,15 @@ public partial class LineWindow : Window
     public void HideImmediate()
     {
         StopClock();
+        _handleMode = false;
+        HandleHost.Visibility = Visibility.Collapsed;
+        LineRoot.Visibility = Visibility.Visible;
         _slide = new Spring1D(-_panelHeight, 0);
         _slideTarget = -_panelHeight;
         Slide.Y = -_panelHeight;
+        _handleSlide = new Spring1D(-LineLayout.HandleHeight, 0);
+        _handleTarget = -LineLayout.HandleHeight;
+        HandleSlide.Y = -LineLayout.HandleHeight;
         if (IsVisible)
         {
             Hide();
@@ -69,7 +94,7 @@ public partial class LineWindow : Window
 
     public bool IsInZone(MousePoint cursor)
     {
-        if (!IsVisible || _anchor is not { } monitor)
+        if (_handleMode || !IsVisible || _anchor is not { } monitor)
         {
             return false;
         }
@@ -145,7 +170,16 @@ public partial class LineWindow : Window
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
     {
         base.OnDpiChanged(oldDpi, newDpi);
-        if (IsVisible)
+        if (!IsVisible)
+        {
+            return;
+        }
+
+        if (_handleMode)
+        {
+            PlaceHandle();
+        }
+        else
         {
             Place();
         }
@@ -165,8 +199,127 @@ public partial class LineWindow : Window
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        if (_handleMode)
+        {
+            return;
+        }
+
         DrawRope();
         _model.Layout(ActualWidth, _ropeTop);
+    }
+
+    private void QueueChrome()
+    {
+        if (_chromeQueued)
+        {
+            return;
+        }
+
+        _chromeQueued = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _chromeQueued = false;
+            ApplyChrome();
+        });
+    }
+
+    private void ApplyChrome()
+    {
+        var showLine = _model.IsRevealed;
+        var showHandle = _model.IsHandleShown && !showLine;
+        if (showLine)
+        {
+            var fromHandle = _handleMode;
+            _handleMode = false;
+            HandleHost.Visibility = Visibility.Collapsed;
+            LineRoot.Visibility = Visibility.Visible;
+            if (fromHandle)
+            {
+                HideImmediate();
+            }
+
+            ApplyReveal(true);
+            return;
+        }
+
+        if (showHandle)
+        {
+            ShowHandle();
+            return;
+        }
+
+        if (_handleMode)
+        {
+            RetractHandle();
+            return;
+        }
+
+        ApplyReveal(false);
+    }
+
+    private void ShowHandle()
+    {
+        if (_anchor is not { } monitor)
+        {
+            return;
+        }
+
+        var first = !_handleMode || !IsVisible;
+        _handleMode = true;
+        LineRoot.Visibility = Visibility.Collapsed;
+        HandleHost.Visibility = Visibility.Visible;
+        if (first)
+        {
+            _handleSlide = new Spring1D(-LineLayout.HandleHeight, 0);
+            _handleTarget = 0;
+            HandleSlide.Y = -LineLayout.HandleHeight;
+        }
+
+        if (!IsVisible)
+        {
+            Show();
+        }
+
+        PlaceHandle(monitor);
+        _handleTarget = 0;
+        StartClock();
+    }
+
+    private void RetractHandle()
+    {
+        if (!IsVisible)
+        {
+            _handleMode = false;
+            return;
+        }
+
+        _handleTarget = -LineLayout.HandleHeight;
+        StartClock();
+    }
+
+    private void PlaceHandle()
+    {
+        if (_anchor is { } monitor)
+        {
+            PlaceHandle(monitor);
+        }
+    }
+
+    private void PlaceHandle(MonitorBounds monitor)
+    {
+        if (_hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var widthDip = LineLayout.HandleWidth + LineLayout.HandleShadowRoom * 2;
+        var heightDip = LineLayout.HandleHeight + LineLayout.HandleShadowRoom;
+        var pixelWidth = Math.Max(1, DisplayScale.ToPhysical(widthDip, monitor.DpiX));
+        var pixelHeight = Math.Max(1, DisplayScale.ToPhysical(heightDip, monitor.DpiY));
+        var pixelX = monitor.Left + (monitor.Width - pixelWidth) / 2;
+        Width = DisplayScale.ToDip(pixelWidth, monitor.DpiX);
+        Height = DisplayScale.ToDip(pixelHeight, monitor.DpiY);
+        WindowPlacement.Move(_hwnd, pixelX, monitor.Top, pixelWidth, pixelHeight, activate: false);
     }
 
     private void CardHover(object sender, MouseEventArgs e)
@@ -362,6 +515,27 @@ public partial class LineWindow : Window
         var dt = _lastFrame == TimeSpan.Zero ? 1.0 / 60 : (timing.RenderingTime - _lastFrame).TotalSeconds;
         _lastFrame = timing.RenderingTime;
         dt = Math.Clamp(dt, 0.001, 0.05);
+
+        if (_handleMode)
+        {
+            _handleSlide = _handleSlide.Step(_handleTarget, dt, Motion.Handle);
+            HandleSlide.Y = _handleSlide.Value;
+            var handleResting = _handleSlide.IsResting(_handleTarget, Motion.Handle);
+            if (handleResting && !_model.IsHandleShown && !_model.IsRevealed && IsVisible)
+            {
+                _handleMode = false;
+                HandleHost.Visibility = Visibility.Collapsed;
+                LineRoot.Visibility = Visibility.Visible;
+                Hide();
+            }
+
+            if (handleResting && !_model.IsRevealed)
+            {
+                StopClock();
+            }
+
+            return;
+        }
 
         _slide = _slide.Step(_slideTarget, dt, Motion.Slide);
         Slide.Y = _slide.Value;

@@ -37,8 +37,8 @@ On the overlay: drag to select, Enter or double-click captures the current monit
 
 ## What the line does 绳子怎么用
 
-- Rest the pointer on the top edge for a moment and the line glides down. Leave and it tucks away. An empty line does not open from the edge.
-- 指针在屏幕上沿停一会儿，绳子滑下来；离开后收起。绳子是空的时，靠上沿不会打开。
+- Touch the top edge and a small white handle slides down at the center of that screen. Rest on the handle and the line glides down. Leave the handle and it tucks away; leave the line and the line tucks away. An empty line does not open from the edge.
+- 碰到屏幕上沿时，该屏幕顶部中央会滑下一小条白色把手。停在把手上，绳子才滑下来。离开把手后把手收起；离开绳子后绳子收起。绳子是空的时，靠上沿不会打开。
 - Each shot is a framed thumbnail with a clip. Click copies the PNG. The X takes it off the line and leaves the file in place.
 - 每张图是带相框和夹子的缩略图。点击复制 PNG。X 只从绳子上取下，文件还在。
 - The line keeps eight shots. An older one drops off the line when a ninth arrives. The PNG stays in the folder.

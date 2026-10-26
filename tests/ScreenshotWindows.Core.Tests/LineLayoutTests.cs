@@ -68,14 +68,41 @@ public class LineLayoutTests
     }
 
     [Fact]
-    public void TopBand_GrowsWithDpi()
+    public void TopBand_IsAFewPhysicalPixels()
     {
         var low = new MonitorBounds("DISPLAY", 0, 0, 1920, 1080, 96, 96);
-        var high = low with { DpiY = 192 };
-        Assert.Equal(18, low.TopBandPixels);
-        Assert.Equal(36, high.TopBandPixels);
-        Assert.True(low.InTopBand(10, 17));
-        Assert.False(low.InTopBand(10, 18));
+        var scaled = low with { DpiX = 120, DpiY = 120 };
+        Assert.Equal(LineLayout.EdgeBandPixels, low.TopBandPixels);
+        Assert.Equal(low.TopBandPixels, scaled.TopBandPixels);
+        Assert.InRange(low.TopBandPixels, 2, 8);
+        Assert.True(low.InTopBand(10, low.TopBandPixels - 1));
+        Assert.False(low.InTopBand(10, low.TopBandPixels));
         Assert.False(low.InTopBand(-1, 0));
+    }
+
+    [Fact]
+    public void Handle_IsACenteredPill_AndScalesAt125Percent()
+    {
+        Assert.InRange(LineLayout.HandleWidth, 64, 88);
+        Assert.InRange(LineLayout.HandleHeight, 6, 12);
+        Assert.Equal(LineLayout.HandleHeight / 2, LineLayout.HandleRadius);
+
+        var monitor = new MonitorBounds("DISPLAY", 100, 40, 2560, 1440, 96, 96);
+        var rect = LineLayout.HandleBounds(monitor);
+        Assert.Equal(72, rect.Width);
+        Assert.Equal(8, rect.Height);
+        Assert.Equal(100 + (2560 - 72) / 2, rect.X);
+        Assert.Equal(40, rect.Y);
+        Assert.True(LineLayout.ContainsHandle(monitor, rect.X + 4, rect.Y));
+        Assert.False(LineLayout.ContainsHandle(monitor, rect.X - 1, rect.Y));
+
+        var dpi125 = monitor with { DpiX = 120, DpiY = 120 };
+        var scaled = LineLayout.HandleBounds(dpi125);
+        Assert.Equal(DisplayScale.ToPhysical(LineLayout.HandleWidth, 120), scaled.Width);
+        Assert.Equal(DisplayScale.ToPhysical(LineLayout.HandleHeight, 120), scaled.Height);
+        Assert.Equal(90, scaled.Width);
+        Assert.Equal(10, scaled.Height);
+        Assert.Equal(100 + (2560 - scaled.Width) / 2, scaled.X);
+        Assert.Equal(40, scaled.Y);
     }
 }

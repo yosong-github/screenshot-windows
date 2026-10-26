@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>ScreenshotWindows.Platform</RootNamespace>
+    <Description>Win32 implementations of the screenshot-windows platform contracts.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ScreenshotWindows.Core\ScreenshotWindows.Core.csproj" />
+    <PackageReference Include="System.Drawing.Common" />
+  </ItemGroup>
+</Project>

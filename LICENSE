@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Pegline contributors
+Copyright (c) 2026 screenshot-windows contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@ SOFTWARE.
 
 Interaction timings and layout proportions are adapted from Tendedero
 (https://github.com/alejandrobujan/tendedero). That project's MIT notice
-follows. Pegline does not use the Tendedero name or icon.
+follows. screenshot-windows does not use the Tendedero name or icon.
 
 MIT License
 
@@ -49,5 +49,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Name and icon: the notice above covers Tendedero's source. It does not grant
-any rights to the Tendedero name or the Tendedero icon. Pegline uses its own
+any rights to the Tendedero name or the Tendedero icon. screenshot-windows uses its own
 name and icon.

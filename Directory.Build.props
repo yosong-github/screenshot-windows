@@ -6,8 +6,8 @@
     <LangVersion>latest</LangVersion>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Deterministic>true</Deterministic>
-    <Company>Pegline</Company>
-    <Product>Pegline</Product>
+    <Company>screenshot-windows</Company>
+    <Product>screenshot-windows</Product>
     <Version>1.0.0</Version>
   </PropertyGroup>
 </Project>

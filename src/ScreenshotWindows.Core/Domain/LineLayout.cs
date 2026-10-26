@@ -21,8 +21,8 @@ public static class LineLayout
     public const double MaxTilt = 2.5;
     public const double MaxSag = 30;
 
-    /// <summary>Aluminium clip. The top grips the rope; the jaws overlap the frame.</summary>
-    public const double ClipWidth = 16;
+    /// <summary>Flat clothespin. The head grips the rope; the jaws overlap the frame.</summary>
+    public const double ClipWidth = 13;
 
     public const double ClipHeight = 42;
 

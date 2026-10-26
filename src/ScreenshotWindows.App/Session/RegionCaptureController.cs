@@ -64,7 +64,7 @@ public sealed class RegionCaptureController
             {
                 foreach (var open in windows)
                 {
-                    open.Dismiss();
+                    _ = open.FadeOutAsync();
                 }
 
                 done.TrySetResult(null);

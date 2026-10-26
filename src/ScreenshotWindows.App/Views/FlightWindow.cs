@@ -25,7 +25,7 @@ public sealed class FlightWindow : Window
     private readonly Canvas _root;
     private readonly Border _outer;
     private readonly Border _inner;
-    private readonly Border _clip;
+    private readonly PegView _peg;
     private readonly SolidColorBrush _fill;
     private readonly SolidColorBrush _edge;
     private readonly RotateTransform _spin = new();
@@ -74,17 +74,16 @@ public sealed class FlightWindow : Window
         Width = Math.Max(1, DisplayScale.ToDip(monitor.Width, monitor.DpiX));
         Height = Math.Max(1, DisplayScale.ToDip(monitor.Height, monitor.DpiY));
 
-        var photo = new Image
+        var photo = new ImageBrush(image)
         {
-            Source = image,
-            Stretch = Stretch.Uniform,
-            CacheMode = new BitmapCache(Math.Max(1, DisplayScale.Factor(monitor.DpiY))),
+            Stretch = Stretch.UniformToFill,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
         };
         RenderOptions.SetBitmapScalingMode(photo, BitmapScalingMode.HighQuality);
         _inner = new Border
         {
-            ClipToBounds = true,
-            Child = photo,
+            Background = photo,
         };
         _fill = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
         _edge = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
@@ -103,56 +102,21 @@ public sealed class FlightWindow : Window
             Child = _inner,
             Effect = _shadow,
         };
-        _clip = new Border
+        _peg = new PegView
         {
             Width = LineLayout.ClipWidth,
             Height = LineLayout.ClipHeight,
-            CornerRadius = new CornerRadius(4),
-            BorderThickness = new Thickness(0.8),
             IsHitTestVisible = false,
             Opacity = 0,
-            Background = new LinearGradientBrush(
-                new GradientStopCollection
-                {
-                    new(clipEdge, 0),
-                    new(clipShine, 0.35),
-                    new(clipBody, 0.62),
-                    new(clipEdge, 1),
-                },
-                new Point(0, 0.5),
-                new Point(1, 0.5)),
-            BorderBrush = new LinearGradientBrush(
-                new GradientStopCollection
-                {
-                    new(Color.FromArgb(242, 255, 255, 255), 0),
-                    new(Color.FromArgb(153, 0, 0, 0), 1),
-                },
-                new Point(0, 0),
-                new Point(0, 1)),
-            Effect = new DropShadowEffect
-            {
-                BlurRadius = 5,
-                ShadowDepth = 1.5,
-                Direction = 90,
-                Opacity = 0.65,
-                Color = Colors.Black,
-            },
-            Child = new Border
-            {
-                Width = 8,
-                Height = 3.5,
-                CornerRadius = new CornerRadius(1.5),
-                Background = new SolidColorBrush(Color.FromArgb(204, 26, 26, 26)),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 11, 0, 0),
-            },
+            Body = clipBody,
+            Edge = clipEdge,
+            Shine = clipShine,
         };
         _root = new Canvas
         {
             RenderTransform = _spin,
             RenderTransformOrigin = new Point(0, 0),
-            Children = { _outer, _clip },
+            Children = { _outer, _peg },
         };
         Content = new Canvas { Children = { _root }, IsHitTestVisible = false };
         Opacity = 0;
@@ -290,9 +254,9 @@ public sealed class FlightWindow : Window
         _shadow.Opacity = 0.22 * chrome;
         Canvas.SetLeft(_outer, 0);
         Canvas.SetTop(_outer, 0);
-        Canvas.SetLeft(_clip, (width - LineLayout.ClipWidth) / 2);
-        Canvas.SetTop(_clip, -LineLayout.FrameTop);
-        _clip.Opacity = chrome;
+        Canvas.SetLeft(_peg, (width - LineLayout.ClipWidth) / 2);
+        Canvas.SetTop(_peg, -LineLayout.FrameTop);
+        _peg.Opacity = chrome;
         Canvas.SetLeft(_root, sample.X);
         Canvas.SetTop(_root, sample.Y);
         _spin.Angle = sample.Angle;

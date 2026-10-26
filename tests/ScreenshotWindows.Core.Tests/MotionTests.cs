@@ -5,6 +5,12 @@ namespace ScreenshotWindows.Core.Tests;
 public class MotionTests
 {
     [Fact]
+    public void OverlayFade_IsAShortEaseOut()
+    {
+        Assert.InRange(Motion.OverlayFade.TotalMilliseconds, 180, 250);
+    }
+
+    [Fact]
     public void OutCubic_StartsFastAndLandsSoft()
     {
         Assert.Equal(0, Easing.OutCubic(0), 5);

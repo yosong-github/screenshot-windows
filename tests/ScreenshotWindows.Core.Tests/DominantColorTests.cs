@@ -18,8 +18,8 @@ public class DominantColorTests
         Assert.True(peg.Body.R > peg.Body.G);
         Assert.True(peg.Body.R > peg.Body.B);
         var body = Hsl.FromRgb(peg.Body);
-        Assert.InRange(body.S, 0.35, 0.78);
-        Assert.InRange(body.L, 0.38, 0.62);
+        Assert.InRange(body.S, 0.18, 0.48);
+        Assert.InRange(body.L, 0.70, 0.90);
     }
 
     [Fact]

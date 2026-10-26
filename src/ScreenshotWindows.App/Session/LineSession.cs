@@ -209,7 +209,7 @@ public sealed class LineSession
             var outcome = _line.Hang(prepared.path, shot.Region.Width, shot.Region.Height);
             if (outcome.Item is not { } item)
             {
-                await _overlay.FadeOutAsync().ConfigureAwait(true);
+                _ = _overlay.FadeOutAsync();
                 return;
             }
 
@@ -236,8 +236,8 @@ public sealed class LineSession
                 () => _model.MarkLanded(item.Id),
                 release.Task);
             await shown.Task.ConfigureAwait(true);
-            await _overlay.FadeOutAsync().ConfigureAwait(true);
             release.TrySetResult();
+            _ = _overlay.FadeOutAsync();
             await fly.ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Runtime.InteropServices.ExternalException)

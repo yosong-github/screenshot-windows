@@ -17,6 +17,13 @@ public partial class HangingCardViewModel : ObservableObject
         Path = item.Path;
         Tilt = item.TiltDegrees;
         Image = image;
+        PhotoBrush = new ImageBrush(image)
+        {
+            Stretch = Stretch.UniformToFill,
+            AlignmentX = AlignmentX.Center,
+            AlignmentY = AlignmentY.Center,
+        };
+        RenderOptions.SetBitmapScalingMode(PhotoBrush, BitmapScalingMode.HighQuality);
         PixelWidth = item.PixelWidth;
         PixelHeight = item.PixelHeight;
         VisualAngle = item.TiltDegrees;
@@ -35,6 +42,12 @@ public partial class HangingCardViewModel : ObservableObject
     public double Tilt { get; }
 
     public ImageSource Image { get; }
+
+    /// <summary>
+    /// Drawn as the frame's background so the rounded corner clips the pixels.
+    /// A child Image is only clipped to the rectangular slot.
+    /// </summary>
+    public ImageBrush PhotoBrush { get; }
 
     public int PixelWidth { get; }
 

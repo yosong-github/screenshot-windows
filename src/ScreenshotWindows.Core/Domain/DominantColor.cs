@@ -79,18 +79,21 @@ public readonly record struct Hsl(double H, double S, double L)
     private static byte Byte(double channel) => (byte)Math.Clamp(Math.Round(channel * 255), 0, 255);
 }
 
-/// <summary>Three shades of one peg so the highlight and shadow still read as metal.</summary>
+/// <summary>
+/// Outline, body, and a slightly lighter top for a matte peg.
+/// The body is a pastel of the photo, or a neutral light grey when the photo has no chroma.
+/// </summary>
 public readonly record struct PegPalette(Rgb Shadow, Rgb Body, Rgb Highlight)
 {
-    public static PegPalette Metal { get; } = new(new Rgb(92, 92, 92), new Rgb(212, 212, 212), new Rgb(247, 247, 247));
+    public static PegPalette Metal { get; } = new(new Rgb(176, 176, 182), new Rgb(236, 236, 239), new Rgb(250, 250, 252));
 
     public static PegPalette FromAccent(Rgb accent)
     {
         var hsl = Hsl.FromRgb(accent);
-        var body = new Hsl(hsl.H, Clamp(hsl.S, 0.38, 0.72), Clamp(hsl.L, 0.42, 0.56)).ToRgb();
+        var body = new Hsl(hsl.H, Clamp(hsl.S, 0.22, 0.42), Clamp(hsl.L, 0.74, 0.84)).ToRgb();
         var mid = Hsl.FromRgb(body);
-        var highlight = new Hsl(mid.H, mid.S * 0.55, Math.Min(0.90, mid.L + 0.28)).ToRgb();
-        var shadow = new Hsl(mid.H, Math.Min(1, mid.S * 1.05), Math.Max(0.16, mid.L - 0.24)).ToRgb();
+        var highlight = new Hsl(mid.H, mid.S * 0.7, Math.Min(0.94, mid.L + 0.06)).ToRgb();
+        var shadow = new Hsl(mid.H, Math.Min(0.55, mid.S * 1.15), Math.Max(0.55, mid.L - 0.16)).ToRgb();
         return new PegPalette(shadow, body, highlight);
     }
 

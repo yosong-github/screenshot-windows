@@ -8,7 +8,8 @@ public static class Motion
 {
     public static readonly TimeSpan FlightDuration = TimeSpan.FromMilliseconds(650);
 
-    public static readonly TimeSpan OverlayFade = TimeSpan.FromMilliseconds(140);
+    /// <summary>Scrim, selection stroke, and size label ease out. The flight is already moving.</summary>
+    public static readonly TimeSpan OverlayFade = TimeSpan.FromMilliseconds(220);
 
     public static readonly TimeSpan TintFade = TimeSpan.FromMilliseconds(180);
 

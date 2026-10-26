@@ -1,10 +1,12 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using ScreenshotWindows.App.Imaging;
 using ScreenshotWindows.App.Session;
 using ScreenshotWindows.Core.Domain;
+using ScreenshotWindows.Platform.Win32;
 
 namespace ScreenshotWindows.App.Views;
 
@@ -18,6 +20,7 @@ public partial class CaptureOverlayWindow : Window
     private bool _silent;
     private bool _closing;
     private bool _fitting;
+    private Task? _fade;
 
     public CaptureOverlayWindow(FrozenMonitor frame)
     {
@@ -50,12 +53,32 @@ public partial class CaptureOverlayWindow : Window
 
     public Task FadeOutAsync()
     {
+        if (_fade is not null)
+        {
+            return _fade;
+        }
+
         if (_closing)
         {
             return Task.CompletedTask;
         }
 
+        _silent = true;
+        _dragging = false;
+        if (IsMouseCaptured)
+        {
+            ReleaseMouseCapture();
+        }
+
+        IsHitTestVisible = false;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            WindowPlacement.SetClickThrough(hwnd, true);
+        }
+
         var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _fade = done.Task;
         var start = TimeSpan.MinValue;
         EventHandler handler = null!;
         handler = (_, args) =>
@@ -78,7 +101,9 @@ public partial class CaptureOverlayWindow : Window
             }
 
             var progress = (timing.RenderingTime - start).TotalMilliseconds / Motion.OverlayFade.TotalMilliseconds;
-            Opacity = 1 - Easing.Clamp01(progress);
+            var opacity = 1 - Easing.OutCubic(progress);
+            Shade.Opacity = opacity;
+            Hint.Opacity = opacity;
             if (progress < 1)
             {
                 return;
@@ -89,7 +114,7 @@ public partial class CaptureOverlayWindow : Window
             done.TrySetResult();
         };
         CompositionTarget.Rendering += handler;
-        return done.Task;
+        return _fade;
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

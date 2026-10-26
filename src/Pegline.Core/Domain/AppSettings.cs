@@ -11,6 +11,10 @@ public sealed class StoredShot
     public int Height { get; set; }
 
     public double Tilt { get; set; }
+
+    public bool AccentKnown { get; set; }
+
+    public int? AccentRgb { get; set; }
 }
 
 public static class SettingsRules

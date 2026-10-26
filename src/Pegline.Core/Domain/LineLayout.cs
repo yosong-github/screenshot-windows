@@ -21,21 +21,34 @@ public static class LineLayout
     public const double MaxTilt = 2.5;
     public const double MaxSag = 30;
 
-    /// <summary>Aluminium clip. It grips the rope and hangs clear of the frame.</summary>
+    /// <summary>Aluminium clip. The top grips the rope; the jaws overlap the frame.</summary>
     public const double ClipWidth = 16;
 
     public const double ClipHeight = 42;
 
-    /// <summary>How far the top of the clip sits above the rope.</summary>
+    /// <summary>How far the top of the clip sits above the rope. The swing pivot is this grip.</summary>
     public const double ClipOverhang = 10;
 
-    /// <summary>Empty space between the bottom of the clip and the photo frame.</summary>
-    public const double ClipGap = 10;
+    /// <summary>How far the jaws cover the top edge of the frame.</summary>
+    public const double JawOverlap = 10;
+
+    public const double FrameRadius = 12;
+
+    public const double FrameBorder = 1;
+
+    /// <summary>Inner corner of the photo: the frame radius minus the white border and padding.</summary>
+    public const double PhotoRadius = FrameRadius - FrameInset - FrameBorder;
 
     public const double ShadowRoom = 40;
 
-    /// <summary>Y of the frame inside the pegged view.</summary>
-    public static double FrameTop => ClipHeight + ClipGap;
+    /// <summary>Y of the frame inside the pegged view. The clip continues past this edge.</summary>
+    public static double FrameTop => ClipHeight - JawOverlap;
+
+    /// <summary>
+    /// Rotation center of the frame, relative to the frame's top-left.
+    /// Negative: the grip is above the frame, on the rope.
+    /// </summary>
+    public static double FramePivotOffset => ClipOverhang - FrameTop;
 
     public static double CardTop(double ropeY) => ropeY - ClipOverhang;
 

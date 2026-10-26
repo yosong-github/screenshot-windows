@@ -77,7 +77,14 @@ public sealed class LineSession
                 continue;
             }
 
-            restored.Add(new HangingItem(Guid.NewGuid(), shot.Path, shot.Width, shot.Height, shot.Tilt));
+            restored.Add(new HangingItem(
+                Guid.NewGuid(),
+                shot.Path,
+                shot.Width,
+                shot.Height,
+                shot.Tilt,
+                shot.AccentKnown,
+                shot.AccentRgb));
         }
 
         _line.Restore(restored);
@@ -99,6 +106,7 @@ public sealed class LineSession
         _window.Anchor = anchor;
         _reveal.Peek(DateTimeOffset.Now);
         _model.IsRevealed = true;
+        _ = TintUnknownAsync();
     }
 
     public void Capture()
@@ -190,15 +198,18 @@ public sealed class LineSession
                 var png = _screen.CropToPng(shot.Frame, shot.Region);
                 var path = _captures.Save(png, takenAt);
                 var thumb = PngImages.Thumbnail(png, 960);
-                return (path, thumb);
+                var accent = DominantColor.Extract(thumb.Pixels, thumb.Width, thumb.Height, thumb.Stride);
+                return (path, thumb, accent);
             }).ConfigureAwait(true);
 
             var outcome = _line.Hang(prepared.path, shot.Region.Width, shot.Region.Height);
             if (outcome.Item is not { } item)
             {
+                await _overlay.FadeOutAsync().ConfigureAwait(true);
                 return;
             }
 
+            item.RememberAccent(prepared.accent is { } color ? color.Packed : null);
             var image = ImageLoader.FromPixels(
                 prepared.thumb.Width,
                 prepared.thumb.Height,
@@ -208,8 +219,22 @@ public sealed class LineSession
                 96);
             _model.Replace(_line.Items, item.Id, image);
             Persist();
-            var destination = _window.RestingScreenRect(item.Id);
-            await _window.FlyAsync(image, shot.ScreenDip, destination, item.TiltDegrees, () => _model.MarkLanded(item.Id)).ConfigureAwait(true);
+
+            var from = new DipRect(shot.ScreenDip.X, shot.ScreenDip.Y, shot.ScreenDip.Width, shot.ScreenDip.Height);
+            var shown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var fly = _window.FlyAsync(
+                image,
+                shot.Frame.Monitor,
+                from,
+                item.Id,
+                () => shown.TrySetResult(),
+                () => _model.MarkLanded(item.Id),
+                release.Task);
+            await shown.Task.ConfigureAwait(true);
+            await _overlay.FadeOutAsync().ConfigureAwait(true);
+            release.TrySetResult();
+            await fly.ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Runtime.InteropServices.ExternalException)
         {
@@ -221,6 +246,7 @@ public sealed class LineSession
         }
         finally
         {
+            _overlay.Close();
             Volatile.Write(ref _busy, 0);
             if (_model.IsRevealed != _reveal.IsRevealed)
             {
@@ -341,6 +367,50 @@ public sealed class LineSession
         _model.CaptureShortcut = _settings.CaptureHotkey.ToDisplay();
     }
 
+    private async Task TintUnknownAsync()
+    {
+        var pending = _line.Items.Where(item => !item.AccentKnown).ToArray();
+        if (pending.Length == 0)
+        {
+            return;
+        }
+
+        var found = await Task.Run(() =>
+        {
+            var colors = new List<(Guid Id, int? Rgb)>(pending.Length);
+            foreach (var item in pending)
+            {
+                try
+                {
+                    var thumb = PngImages.Thumbnail(File.ReadAllBytes(item.Path), 64);
+                    var accent = DominantColor.Extract(thumb.Pixels, thumb.Width, thumb.Height, thumb.Stride);
+                    colors.Add((item.Id, accent is { } color ? color.Packed : null));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Runtime.InteropServices.ExternalException)
+                {
+                    colors.Add((item.Id, null));
+                }
+            }
+
+            return colors;
+        }).ConfigureAwait(true);
+
+        foreach (var (id, rgb) in found)
+        {
+            var item = _line.Find(id);
+            if (item is null || item.AccentKnown)
+            {
+                continue;
+            }
+
+            item.RememberAccent(rgb);
+            _model.AnimateAccent(id, rgb);
+        }
+
+        Persist();
+        _window.Wake();
+    }
+
     private void Persist()
     {
         _settings.Hanging = _line.Items.Select(item => new StoredShot
@@ -349,6 +419,8 @@ public sealed class LineSession
             Width = item.PixelWidth,
             Height = item.PixelHeight,
             Tilt = item.TiltDegrees,
+            AccentKnown = item.AccentKnown,
+            AccentRgb = item.AccentRgb,
         }).ToList();
         _settingsStore.Save(_settings);
     }

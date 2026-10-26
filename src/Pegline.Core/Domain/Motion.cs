@@ -8,7 +8,9 @@ public static class Motion
 {
     public static readonly TimeSpan FlightDuration = TimeSpan.FromMilliseconds(650);
 
-    public static readonly TimeSpan FlightFade = TimeSpan.FromMilliseconds(160);
+    public static readonly TimeSpan OverlayFade = TimeSpan.FromMilliseconds(140);
+
+    public static readonly TimeSpan TintFade = TimeSpan.FromMilliseconds(180);
 
     public const double FlightArc = 18;
 
@@ -16,7 +18,8 @@ public static class Motion
 
     public const double HoverSwing = 2.4;
 
-    public const double LandingSwing = 6.5;
+    /// <summary>Angular speed (degrees per second) added when a photo lands. The angle itself does not jump.</summary>
+    public const double LandingSwingVelocity = 100;
 
     /// <summary>
     /// Downward speed (DIP per second) when the line starts to tuck away.

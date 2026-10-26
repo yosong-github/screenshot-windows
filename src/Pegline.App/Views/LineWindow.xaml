@@ -57,42 +57,25 @@
       </ItemsControl.ItemContainerStyle>
       <ItemsControl.ItemTemplate>
         <DataTemplate>
-          <Border Background="Transparent" MouseEnter="CardHover" MouseLeave="CardHover"
+          <Border Background="Transparent" Opacity="{Binding Opacity}"
+                  MouseEnter="CardHover" MouseLeave="CardHover"
                   MouseLeftButtonUp="CardClicked" Cursor="Hand">
             <Border.RenderTransform>
               <TranslateTransform X="{Binding ShiftX}" Y="{Binding ShiftY}" />
             </Border.RenderTransform>
-            <Canvas Width="{Binding ChromeWidth}" Height="{Binding ChromeHeight}" RenderTransformOrigin="0.5,0">
+            <Canvas Width="{Binding ChromeWidth}" Height="{Binding ChromeHeight}">
               <Canvas.RenderTransform>
-                <RotateTransform Angle="{Binding VisualAngle}" />
+                <RotateTransform Angle="{Binding VisualAngle}"
+                                 CenterX="{Binding PivotX}"
+                                 CenterY="{Binding PivotY}" />
               </Canvas.RenderTransform>
-              <Border Width="{x:Static domain:LineLayout.ClipWidth}"
-                      Height="{x:Static domain:LineLayout.ClipHeight}"
-                      Canvas.Left="{Binding ClipLeft}" Canvas.Top="0"
-                      CornerRadius="4" BorderThickness="0.8" IsHitTestVisible="False">
-                <Border.Background>
-                  <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                    <GradientStop Color="#FF6E6E6E" Offset="0" />
-                    <GradientStop Color="#FFF7F7F7" Offset="0.35" />
-                    <GradientStop Color="#FFD4D4D4" Offset="0.62" />
-                    <GradientStop Color="#FF5C5C5C" Offset="1" />
-                  </LinearGradientBrush>
-                </Border.Background>
-                <Border.BorderBrush>
-                  <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#F2FFFFFF" Offset="0" />
-                    <GradientStop Color="#99000000" Offset="1" />
-                  </LinearGradientBrush>
-                </Border.BorderBrush>
-                <Border.Effect>
-                  <DropShadowEffect BlurRadius="5" ShadowDepth="1.5" Direction="90" Opacity="0.65" Color="#FF000000" />
-                </Border.Effect>
-                <Border Width="8" Height="3.5" CornerRadius="1.5" Background="#CC1A1A1A"
-                        VerticalAlignment="Top" Margin="0,11,0,0" />
-              </Border>
-
-              <Border Canvas.Top="{Binding FrameTop}" Padding="4" CornerRadius="12"
-                      Background="#F4FFFFFF" BorderBrush="#E6FFFFFF" BorderThickness="1"
+              <Border Canvas.Top="{Binding FrameTop}"
+                      Width="{Binding ChromeWidth}"
+                      Height="{Binding FrameHeight}"
+                      Padding="{Binding FramePadding}"
+                      CornerRadius="{Binding FrameCorner}"
+                      BorderThickness="1"
+                      Background="#F4FFFFFF" BorderBrush="#E6FFFFFF"
                       RenderTransformOrigin="0.5,0">
                 <Border.RenderTransform>
                   <ScaleTransform ScaleX="{Binding HoverScale}" ScaleY="{Binding HoverScale}" />
@@ -102,12 +85,14 @@
                                     Opacity="{Binding ShadowOpacity}" Direction="90" Color="#FF000000" />
                 </Border.Effect>
                 <Grid>
-                  <Image Source="{Binding Image}" Width="{Binding PhotoWidth}" Height="{Binding PhotoHeight}"
-                         Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality">
-                    <Image.CacheMode>
-                      <BitmapCache />
-                    </Image.CacheMode>
-                  </Image>
+                  <Border CornerRadius="{Binding PhotoCorner}" ClipToBounds="True">
+                    <Image Source="{Binding Image}" Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="HighQuality">
+                      <Image.CacheMode>
+                        <BitmapCache RenderAtScale="{Binding CacheScale}" />
+                      </Image.CacheMode>
+                    </Image>
+                  </Border>
                   <Border Background="#CC1F6B3A" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center"
                           Padding="8,3" Visibility="{Binding Copied, Converter={StaticResource BoolVis}}" IsHitTestVisible="False">
                     <TextBlock Text="Copied  已复制" Foreground="White" FontSize="12" />
@@ -125,6 +110,30 @@
                     <TextBlock Text="&#x2715;" Foreground="#FF3C3C3C" FontSize="11" />
                   </Button>
                 </Grid>
+              </Border>
+              <Border Width="{x:Static domain:LineLayout.ClipWidth}"
+                      Height="{x:Static domain:LineLayout.ClipHeight}"
+                      Canvas.Left="{Binding ClipLeft}" Canvas.Top="0"
+                      CornerRadius="4" BorderThickness="0.8" IsHitTestVisible="False">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                    <GradientStop Color="{Binding ClipEdge}" Offset="0" />
+                    <GradientStop Color="{Binding ClipShine}" Offset="0.35" />
+                    <GradientStop Color="{Binding ClipBody}" Offset="0.62" />
+                    <GradientStop Color="{Binding ClipEdge}" Offset="1" />
+                  </LinearGradientBrush>
+                </Border.Background>
+                <Border.BorderBrush>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#F2FFFFFF" Offset="0" />
+                    <GradientStop Color="#99000000" Offset="1" />
+                  </LinearGradientBrush>
+                </Border.BorderBrush>
+                <Border.Effect>
+                  <DropShadowEffect BlurRadius="5" ShadowDepth="1.5" Direction="90" Opacity="0.65" Color="#FF000000" />
+                </Border.Effect>
+                <Border Width="8" Height="3.5" CornerRadius="1.5" Background="#CC1A1A1A"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,11,0,0" />
               </Border>
             </Canvas>
           </Border>

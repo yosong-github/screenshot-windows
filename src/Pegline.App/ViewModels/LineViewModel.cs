@@ -10,6 +10,7 @@ public partial class LineViewModel : ObservableObject
 {
     private double _width;
     private double _ropeTop = LineLayout.RopeTop;
+    private double _cacheScale = 1;
 
     public ObservableCollection<HangingCardViewModel> Cards { get; } = new();
 
@@ -35,6 +36,7 @@ public partial class LineViewModel : ObservableObject
                     ? flyingImage
                     : ImageLoader.FromFile(item.Path, 480);
                 card = new HangingCardViewModel(item, image);
+                card.CacheScale = _cacheScale;
             }
 
             card.Flying = flyingId == item.Id;
@@ -63,10 +65,14 @@ public partial class LineViewModel : ObservableObject
             var photo = LineLayout.PhotoSize(card.PixelWidth, card.PixelHeight);
             card.PhotoWidth = photo.Width;
             card.PhotoHeight = photo.Height;
-            card.ChromeWidth = photo.Width + LineLayout.FrameInset * 2;
-            card.ChromeHeight = LineLayout.FrameTop + photo.Height + LineLayout.FrameInset * 2;
+            var frameExtra = (LineLayout.FrameInset + LineLayout.FrameBorder) * 2;
+            card.ChromeWidth = photo.Width + frameExtra;
+            card.FrameHeight = photo.Height + frameExtra;
+            card.ChromeHeight = LineLayout.FrameTop + card.FrameHeight;
             card.ClipLeft = (card.ChromeWidth - LineLayout.ClipWidth) / 2;
             card.FrameTop = LineLayout.FrameTop;
+            card.PivotX = card.ChromeWidth / 2;
+            card.PivotY = LineLayout.ClipOverhang;
             var left = x - card.ChromeWidth / 2;
             var top = LineLayout.CardTop(LineLayout.RopeY(x, _width, _ropeTop));
             if (card.Placed && !card.Flying)
@@ -109,8 +115,23 @@ public partial class LineViewModel : ObservableObject
         }
 
         card.Flying = false;
-        card.SwingKick = Motion.LandingSwing;
+        card.SwingArm = false;
+        card.SwingKick = Motion.LandingSwingVelocity;
         Layout(_width, _ropeTop);
+    }
+
+    public void SetCacheScale(double scale)
+    {
+        _cacheScale = scale <= 0 ? 1 : scale;
+        foreach (var card in Cards)
+        {
+            card.CacheScale = _cacheScale;
+        }
+    }
+
+    public void AnimateAccent(Guid id, int? rgb)
+    {
+        Find(id)?.SetAccent(rgb, animate: true);
     }
 
     public void RequestCopy(Guid id) => CopyRequested?.Invoke(this, id);

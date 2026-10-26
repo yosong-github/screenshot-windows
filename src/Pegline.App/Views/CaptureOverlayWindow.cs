@@ -48,6 +48,50 @@ public partial class CaptureOverlayWindow : Window
         }
     }
 
+    public Task FadeOutAsync()
+    {
+        if (_closing)
+        {
+            return Task.CompletedTask;
+        }
+
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var start = TimeSpan.MinValue;
+        EventHandler handler = null!;
+        handler = (_, args) =>
+        {
+            if (args is not RenderingEventArgs timing)
+            {
+                return;
+            }
+
+            if (_closing)
+            {
+                CompositionTarget.Rendering -= handler;
+                done.TrySetResult();
+                return;
+            }
+
+            if (start == TimeSpan.MinValue)
+            {
+                start = timing.RenderingTime;
+            }
+
+            var progress = (timing.RenderingTime - start).TotalMilliseconds / Motion.OverlayFade.TotalMilliseconds;
+            Opacity = 1 - Easing.Clamp01(progress);
+            if (progress < 1)
+            {
+                return;
+            }
+
+            CompositionTarget.Rendering -= handler;
+            Dismiss();
+            done.TrySetResult();
+        };
+        CompositionTarget.Rendering += handler;
+        return done.Task;
+    }
+
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         _closing = true;
@@ -248,17 +292,19 @@ public partial class CaptureOverlayWindow : Window
         element.Height = Math.Max(0, height);
     }
 
+    /// <summary>
+    /// Selection in this monitor's DIP space. The overlay's client origin is the monitor corner,
+    /// the same space the line and the flight use, so the flight starts on the hole.
+    /// </summary>
     private Rect ScreenDip(PixelRect region)
     {
         var viewWidth = ViewWidth;
         var viewHeight = ViewHeight;
         var left = CaptureMapping.ToView(region.X, _frame.PixelWidth, viewWidth);
         var top = CaptureMapping.ToView(region.Y, _frame.PixelHeight, viewHeight);
-        var right = CaptureMapping.ToView(region.X + region.Width, _frame.PixelWidth, viewWidth);
-        var bottom = CaptureMapping.ToView(region.Y + region.Height, _frame.PixelHeight, viewHeight);
-        var origin = Shot.PointToScreen(new Point(left, top));
-        var far = Shot.PointToScreen(new Point(Math.Max(left, right), Math.Max(top, bottom)));
-        return new Rect(origin, far);
+        var width = CaptureMapping.ToView(region.Width, _frame.PixelWidth, viewWidth);
+        var height = CaptureMapping.ToView(region.Height, _frame.PixelHeight, viewHeight);
+        return new Rect(left, top, Math.Max(0, width), Math.Max(0, height));
     }
 
     private PixelRect RegionBetween(Point start, Point end)

@@ -8,15 +8,38 @@ namespace Pegline.App.Session;
 public readonly record struct CaptureSelection(FrozenMonitor Frame, PixelRect Region, Rect ScreenDip);
 
 /// <summary>
-/// One dim overlay per frozen monitor. The first commit or cancel closes every overlay.
+/// One dim overlay per frozen monitor. Cancel closes them. A commit keeps them up until the flight is visible.
 /// </summary>
 public sealed class RegionCaptureController
 {
     private readonly IDisplayEnvironment _displays;
+    private CaptureOverlayWindow[] _held = Array.Empty<CaptureOverlayWindow>();
 
     public RegionCaptureController(IDisplayEnvironment displays)
     {
         _displays = displays;
+    }
+
+    public Task FadeOutAsync()
+    {
+        var held = _held;
+        _held = Array.Empty<CaptureOverlayWindow>();
+        if (held.Length == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        return Task.WhenAll(Array.ConvertAll(held, window => window.FadeOutAsync()));
+    }
+
+    public void Close()
+    {
+        foreach (var window in _held)
+        {
+            window.Dismiss();
+        }
+
+        _held = Array.Empty<CaptureOverlayWindow>();
     }
 
     public Task<CaptureSelection?> RunAsync(IReadOnlyList<FrozenMonitor> frames)
@@ -37,11 +60,18 @@ public sealed class RegionCaptureController
                 return;
             }
 
-            foreach (var open in windows)
+            if (selection is null)
             {
-                open.Dismiss();
+                foreach (var open in windows)
+                {
+                    open.Dismiss();
+                }
+
+                done.TrySetResult(null);
+                return;
             }
 
+            _held = windows.ToArray();
             done.TrySetResult(selection);
         }
 

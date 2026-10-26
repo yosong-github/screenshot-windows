@@ -1,12 +1,16 @@
-# Pegline
+# screenshot-windows
 
 Screenshots hang from a line along the top of the screen. Press a shortcut, drag a region, and the picture is clipped to the line.
 
 截图会挂在屏幕顶部的一根绳子上。按下快捷键，拖出区域，照片就夹到绳子上。
 
-Pegline is a Windows 10/11 app. It borrows the clothesline interaction (timings and layout proportions) from [Tendedero](https://github.com/alejandrobujan/tendedero) by Alejandro Buján, which is MIT-licensed. The name Tendedero and its icon are not used. See [LICENSE](LICENSE).
+screenshot-windows is a Windows 10/11 app. It borrows the clothesline interaction (timings and layout proportions) from [Tendedero](https://github.com/alejandrobujan/tendedero) by Alejandro Buján, which is MIT-licensed. The name Tendedero and its icon are not used. See [LICENSE](LICENSE).
 
-Pegline 是 Windows 10/11 应用。晾衣绳的交互（时间与布局比例）来自 Alejandro Buján 的 [Tendedero](https://github.com/alejandrobujan/tendedero)（MIT）。本项目不使用 Tendedero 这个名字和图标。详见 [LICENSE](LICENSE)。
+screenshot-windows 是 Windows 10/11 应用。晾衣绳的交互（时间与布局比例）来自 Alejandro Buján 的 [Tendedero](https://github.com/alejandrobujan/tendedero)（MIT）。本项目不使用 Tendedero 这个名字和图标。详见 [LICENSE](LICENSE)。
+
+Renamed from Pegline. The first launch copies that `%LOCALAPPDATA%` folder into `screenshot-windows` when the new folder is not there yet. Pictures already on disk stay where they are; new captures use `Pictures\screenshot-windows`.
+
+已改名。第一次启动时，若新的本地数据目录还不存在，会把原来的 `%LOCALAPPDATA%` 目录复制过去。已经保存的图片留在原处，新截图写入 `Pictures\screenshot-windows`。
 
 There is no network access and no telemetry.
 
@@ -33,8 +37,8 @@ On the overlay: drag to select, Enter or double-click captures the current monit
 
 ## What the line does 绳子怎么用
 
-- Rest the pointer on the top edge for a moment and the line glides down. Leave and it tucks away. An empty line does not open from the edge.
-- 指针在屏幕上沿停一会儿，绳子滑下来；离开后收起。绳子是空的时，靠上沿不会打开。
+- Touch the top edge and a small white handle slides down at the center of that screen. Rest on the handle and the line glides down. Leave the handle and it tucks away; leave the line and the line tucks away. An empty line does not open from the edge.
+- 碰到屏幕上沿时，该屏幕顶部中央会滑下一小条白色把手。停在把手上，绳子才滑下来。离开把手后把手收起；离开绳子后绳子收起。绳子是空的时，靠上沿不会打开。
 - Each shot is a framed thumbnail with a clip. Click copies the PNG. The X takes it off the line and leaves the file in place.
 - 每张图是带相框和夹子的缩略图。点击复制 PNG。X 只从绳子上取下，文件还在。
 - The line keeps eight shots. An older one drops off the line when a ninth arrives. The PNG stays in the folder.
@@ -42,9 +46,9 @@ On the overlay: drag to select, Enter or double-click captures the current monit
 - After a capture, the new picture flies onto the line and the line stays down briefly.
 - 截图之后，新照片会飞到绳子上，绳子会短暂保持展开。
 
-Pictures are saved under `Pictures\Pegline` (or `%LOCALAPPDATA%\Pegline\Captures` when there is no Pictures folder). Settings live in `%LOCALAPPDATA%\Pegline\settings.json`.
+Pictures are saved under `Pictures\screenshot-windows` (or `%LOCALAPPDATA%\screenshot-windows\Captures` when there is no Pictures folder). Settings live in `%LOCALAPPDATA%\screenshot-windows\settings.json`.
 
-图片保存在 `Pictures\Pegline`（没有图片文件夹时用 `%LOCALAPPDATA%\Pegline\Captures`）。设置在 `%LOCALAPPDATA%\Pegline\settings.json`。
+图片保存在 `Pictures\screenshot-windows`（没有图片文件夹时用 `%LOCALAPPDATA%\screenshot-windows\Captures`）。设置在 `%LOCALAPPDATA%\screenshot-windows\settings.json`。
 
 The tray menu can show or hide the line, take a screenshot, edit shortcuts, and quit. A second launch exits.
 
@@ -53,10 +57,10 @@ The tray menu can show or hide the line, take a screenshot, edit shortcuts, and 
 ## Layout 结构
 
 ```
-Pegline.App          WPF, MVVM, Microsoft.Extensions.Hosting
-    -> Pegline.Platform    Win32 behind the Core interfaces
-        -> Pegline.Core    domain and contracts, no Win32
-Pegline.Core.Tests -> Pegline.Core
+ScreenshotWindows.App          WPF, MVVM, Microsoft.Extensions.Hosting
+    -> ScreenshotWindows.Platform    Win32 behind the Core interfaces
+        -> ScreenshotWindows.Core    domain and contracts, no Win32
+ScreenshotWindows.Core.Tests -> ScreenshotWindows.Core
 ```
 
 Platform contracts include `IScreenCapture` (freeze and crop), `IGlobalHotkey` (`RegisterHotKey`), `IDisplayEnvironment`, `IClipboardImageWriter`, `ICaptureStore`, and `ISettingsStore`.
@@ -74,9 +78,9 @@ Phase 1 is the capture hotkey, the region overlay, and the clothesline. Later wo
 需要 .NET 8 SDK。应用目标框架是 `net8.0-windows`。`EnableWindowsTargeting` 让 Linux 上也能 `dotnet build` 和 `dotnet test`；界面本身要在 Windows 上运行。
 
 ```bash
-dotnet build Pegline.sln -c Release
-dotnet test Pegline.sln -c Release
-dotnet run --project src/Pegline.App -c Release
+dotnet build screenshot-windows.sln -c Release
+dotnet test screenshot-windows.sln -c Release
+dotnet run --project src/ScreenshotWindows.App -c Release
 ```
 
 Self-contained single-file executable:
@@ -84,13 +88,13 @@ Self-contained single-file executable:
 自包含单文件：
 
 ```bash
-dotnet publish src/Pegline.App/Pegline.App.csproj -c Release -r win-x64 --self-contained true \
+dotnet publish src/ScreenshotWindows.App/ScreenshotWindows.App.csproj -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 ```
 
-GitHub Actions on `windows-latest` builds, tests, and uploads `Pegline.exe`.
+GitHub Actions on `windows-latest` builds, tests, and uploads `screenshot-windows.exe`.
 
-GitHub Actions 在 `windows-latest` 上构建、测试并上传 `Pegline.exe`。
+GitHub Actions 在 `windows-latest` 上构建、测试并上传 `screenshot-windows.exe`。
 
 ## What this environment did not run 这里没能实际跑起来的部分
 

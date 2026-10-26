@@ -30,6 +30,10 @@ public partial class LineWindow : Window
     private double _slideTarget = -LineLayout.PanelHeightFor(LineLayout.CaptionFallback);
     private Spring1D _handleSlide = new(-LineLayout.HandleHeight, 0);
     private double _handleTarget = -LineLayout.HandleHeight;
+    private readonly HashSet<Guid> _liveIds = new();
+    private readonly List<Guid> _retiredIds = new();
+    private double _handleCacheScale = -1;
+    private static readonly SolidColorBrush HandleBorderBrush = CreateHandleBorder();
     private bool _handleMode;
     private bool _chromeQueued;
     private double _ropeTop = LineLayout.CaptionFallback;
@@ -45,6 +49,22 @@ public partial class LineWindow : Window
         HandleHost.Width = LineLayout.HandleWidth;
         HandleHost.Height = LineLayout.HandleHeight;
         HandleHost.CornerRadius = new CornerRadius(LineLayout.HandleRadius);
+        HandleHost.BorderBrush = HandleBorderBrush;
+        HandleHost.BorderThickness = new Thickness(1);
+        HandleHost.Margin = new Thickness(LineLayout.HandleShadowRoom, 0, LineLayout.HandleShadowRoom, LineLayout.HandleShadowRoom);
+        if (HandleHost.Effect is System.Windows.Media.Effects.DropShadowEffect shadow)
+        {
+            shadow.BlurRadius = LineLayout.HandleShadowBlur;
+            shadow.ShadowDepth = LineLayout.HandleShadowDepth;
+            shadow.Direction = 90;
+            shadow.Opacity = LineLayout.HandleShadowOpacity;
+            shadow.Color = Colors.Black;
+            if (shadow.CanFreeze)
+            {
+                shadow.Freeze();
+            }
+        }
+
         HandleSlide.Y = -LineLayout.HandleHeight;
         model.PropertyChanged += (_, args) =>
         {
@@ -78,7 +98,7 @@ public partial class LineWindow : Window
     {
         StopClock();
         _handleMode = false;
-        HandleHost.Visibility = Visibility.Collapsed;
+        HandleRoot.Visibility = Visibility.Collapsed;
         LineRoot.Visibility = Visibility.Visible;
         _slide = new Spring1D(-_panelHeight, 0);
         _slideTarget = -_panelHeight;
@@ -231,7 +251,7 @@ public partial class LineWindow : Window
         {
             var fromHandle = _handleMode;
             _handleMode = false;
-            HandleHost.Visibility = Visibility.Collapsed;
+            HandleRoot.Visibility = Visibility.Collapsed;
             LineRoot.Visibility = Visibility.Visible;
             if (fromHandle)
             {
@@ -267,7 +287,7 @@ public partial class LineWindow : Window
         var first = !_handleMode || !IsVisible;
         _handleMode = true;
         LineRoot.Visibility = Visibility.Collapsed;
-        HandleHost.Visibility = Visibility.Visible;
+        HandleRoot.Visibility = Visibility.Visible;
         if (first)
         {
             _handleSlide = new Spring1D(-LineLayout.HandleHeight, 0);
@@ -320,6 +340,12 @@ public partial class LineWindow : Window
         Width = DisplayScale.ToDip(pixelWidth, monitor.DpiX);
         Height = DisplayScale.ToDip(pixelHeight, monitor.DpiY);
         WindowPlacement.Move(_hwnd, pixelX, monitor.Top, pixelWidth, pixelHeight, activate: false);
+        var scale = DisplayScale.Factor(monitor.DpiY);
+        if (Math.Abs(_handleCacheScale - scale) > 0.01)
+        {
+            HandleCache.CacheMode = new BitmapCache(scale) { EnableClearType = false };
+            _handleCacheScale = scale;
+        }
     }
 
     private void CardHover(object sender, MouseEventArgs e)
@@ -524,7 +550,7 @@ public partial class LineWindow : Window
             if (handleResting && !_model.IsHandleShown && !_model.IsRevealed && IsVisible)
             {
                 _handleMode = false;
-                HandleHost.Visibility = Visibility.Collapsed;
+                HandleRoot.Visibility = Visibility.Collapsed;
                 LineRoot.Visibility = Visibility.Visible;
                 Hide();
             }
@@ -542,10 +568,10 @@ public partial class LineWindow : Window
         var lag = Math.Clamp(-_slide.Velocity * Motion.SwingLag, -Motion.MaxLagSwing, Motion.MaxLagSwing);
         var busy = !_slide.IsResting(_slideTarget, Motion.Slide);
 
-        var live = new HashSet<Guid>();
+        _liveIds.Clear();
         foreach (var card in _model.Cards)
         {
-            live.Add(card.Id);
+            _liveIds.Add(card.Id);
             if (!_motion.TryGetValue(card.Id, out var motion))
             {
                 motion = new CardMotion
@@ -594,9 +620,23 @@ public partial class LineWindow : Window
             card.ShiftX = motion.ShiftX.Value;
             card.ShiftY = motion.ShiftY.Value;
             card.CloseOpacity = motion.Close.Value;
-            card.ShadowBlur = 12 + 8 * motion.Shadow.Value;
-            card.ShadowDepth = 5 + 3 * motion.Shadow.Value;
-            card.ShadowOpacity = 0.22 + 0.16 * motion.Shadow.Value;
+            var blur = 12 + 8 * motion.Shadow.Value;
+            var depth = 5 + 3 * motion.Shadow.Value;
+            var shadowOpacity = 0.22 + 0.16 * motion.Shadow.Value;
+            if (Math.Abs(card.ShadowBlur - blur) > 0.05)
+            {
+                card.ShadowBlur = blur;
+            }
+
+            if (Math.Abs(card.ShadowDepth - depth) > 0.02)
+            {
+                card.ShadowDepth = depth;
+            }
+
+            if (Math.Abs(card.ShadowOpacity - shadowOpacity) > 0.005)
+            {
+                card.ShadowOpacity = shadowOpacity;
+            }
 
             busy |= card.AdvanceTint(dt)
                 || card.Hovered
@@ -607,7 +647,16 @@ public partial class LineWindow : Window
                 || !motion.Close.IsResting(card.Hovered ? 1 : 0, Motion.Fade);
         }
 
-        foreach (var id in _motion.Keys.Where(id => !live.Contains(id)).ToArray())
+        _retiredIds.Clear();
+        foreach (var id in _motion.Keys)
+        {
+            if (!_liveIds.Contains(id))
+            {
+                _retiredIds.Add(id);
+            }
+        }
+
+        foreach (var id in _retiredIds)
         {
             _motion.Remove(id);
         }
@@ -655,6 +704,13 @@ public partial class LineWindow : Window
 
         handled = true;
         return new IntPtr(NoActivate);
+    }
+
+    private static SolidColorBrush CreateHandleBorder()
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(0x1A, 0, 0, 0));
+        brush.Freeze();
+        return brush;
     }
 
     private static bool IsInsideButton(DependencyObject? source)

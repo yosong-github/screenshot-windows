@@ -90,6 +90,7 @@ public sealed class LineSession
         _line.Restore(restored);
         _model.Replace(_line.Items, null);
         Persist();
+        FlightWindow.Warm(_displays.QueryMonitors());
         BindHotkeys(announce: true);
         _timer.Start();
         if (_line.Count == 0)
@@ -168,6 +169,7 @@ public sealed class LineSession
 
     private async Task CaptureCoreAsync()
     {
+        var hung = false;
         try
         {
             _model.IsHandleShown = false;
@@ -201,7 +203,12 @@ public sealed class LineSession
             {
                 var png = _screen.CropToPng(shot.Frame, shot.Region);
                 var path = _captures.Save(png, takenAt);
-                var thumb = PngImages.Thumbnail(png, 960);
+                var photo = LineLayout.PhotoSize(shot.Region.Width, shot.Region.Height);
+                var dpi = shot.Frame.Monitor.DpiX > shot.Frame.Monitor.DpiY
+                    ? shot.Frame.Monitor.DpiX
+                    : shot.Frame.Monitor.DpiY;
+                var edge = LineLayout.FlightBitmapPixels(Math.Max(photo.Width, photo.Height), dpi);
+                var thumb = PngImages.Thumbnail(png, edge);
                 var accent = DominantColor.Extract(thumb.Pixels, thumb.Width, thumb.Height, thumb.Stride);
                 return (path, thumb, accent);
             }).ConfigureAwait(true);
@@ -213,6 +220,7 @@ public sealed class LineSession
                 return;
             }
 
+            hung = true;
             item.RememberAccent(prepared.accent is { } color ? color.Packed : null);
             var image = ImageLoader.FromPixels(
                 prepared.thumb.Width,
@@ -222,7 +230,6 @@ public sealed class LineSession
                 96,
                 96);
             _model.Replace(_line.Items, item.Id, image);
-            Persist();
 
             var from = new DipRect(shot.ScreenDip.X, shot.ScreenDip.Y, shot.ScreenDip.Width, shot.ScreenDip.Height);
             var shown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -239,9 +246,21 @@ public sealed class LineSession
             release.TrySetResult();
             _ = _overlay.FadeOutAsync();
             await fly.ConfigureAwait(true);
+            Persist();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Runtime.InteropServices.ExternalException)
         {
+            if (hung)
+            {
+                try
+                {
+                    Persist();
+                }
+                catch (Exception nested) when (nested is IOException or UnauthorizedAccessException)
+                {
+                }
+            }
+
             MessageBox.Show(
                 "Couldn't save the screenshot.\n无法保存截图。\n" + ex.Message,
                 "screenshot-windows",

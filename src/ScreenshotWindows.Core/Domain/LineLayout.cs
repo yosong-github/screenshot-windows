@@ -42,14 +42,24 @@ public static class LineLayout
     public const double ShadowRoom = 40;
 
     /// <summary>White tab that drops from the top center of the monitor. The line stays up until the pointer rests on it.</summary>
-    public const double HandleWidth = 72;
+    public const double HandleWidth = 88;
 
-    public const double HandleHeight = 8;
+    public const double HandleHeight = 12;
 
-    public const double HandleRadius = 4;
+    public const double HandleRadius = 6;
 
-    /// <summary>Room under the tab so its shadow is not clipped by the window.</summary>
-    public const double HandleShadowRoom = 8;
+    /// <summary>Soft shadow under the tab, in DIPs. Drawn once into a cache; the slide only moves that bitmap.</summary>
+    public const double HandleShadowBlur = 10;
+
+    public const double HandleShadowDepth = 2;
+
+    public const double HandleShadowOpacity = 0.22;
+
+    /// <summary>Extra window size around the tab so the cached shadow is not clipped. The shadow falls downward.</summary>
+    public const double HandleShadowRoom = 18;
+
+    /// <summary>Flight bitmap edge, in physical pixels of the slot, times this. The flight scales that bitmap; it does not resample the full capture.</summary>
+    public const double FlightBitmapScale = 2;
 
     /// <summary>Top-edge hit band, in physical pixels. A few pixels, so the title bar does not count.</summary>
     public const int EdgeBandPixels = 4;
@@ -130,4 +140,10 @@ public static class LineLayout
 
     public static bool ContainsHandle(MonitorBounds monitor, int x, int y) =>
         HandleBounds(monitor).Contains(x, y);
+
+    /// <summary>
+    /// Longest edge of the flight bitmap. <paramref name="slotDip"/> is the photo's longest DIP edge.
+    /// </summary>
+    public static int FlightBitmapPixels(double slotDip, uint dpi) =>
+        Math.Max(1, DisplayScale.ToPhysical(Math.Max(0, slotDip), dpi) * (int)FlightBitmapScale);
 }

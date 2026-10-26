@@ -1,8 +1,12 @@
 using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ScreenshotWindows.App.Session;
 using ScreenshotWindows.App.Tray;
+using ScreenshotWindows.App.Views;
 using ScreenshotWindows.Platform.Settings;
 
 namespace ScreenshotWindows.App;
@@ -32,11 +36,13 @@ public partial class App : Application
             return;
         }
 
+        RenderOptions.ProcessRenderMode = RenderMode.Default;
         _host = AppServices.Build();
         var session = _host.Services.GetRequiredService<LineSession>();
         var tray = _host.Services.GetRequiredService<TrayIconController>();
         tray.Bind(session);
         session.Start();
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(FlightTrace.NoteRenderTier));
     }
 
     protected override void OnExit(ExitEventArgs e)

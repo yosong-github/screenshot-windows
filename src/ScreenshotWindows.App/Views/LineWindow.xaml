@@ -127,20 +127,29 @@
       <Run Text="按快捷键截图。" />
     </TextBlock>
     </Grid>
-    <Border x:Name="HandleHost"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Top"
-            Background="#F8FFFFFF"
-            Visibility="Collapsed"
-            IsHitTestVisible="False">
-      <Border.RenderTransform>
+    <Grid x:Name="HandleRoot"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"
+          Visibility="Collapsed"
+          IsHitTestVisible="False">
+      <Grid.RenderTransform>
         <TranslateTransform x:Name="HandleSlide" />
-      </Border.RenderTransform>
-      <Border.Effect>
-        <DropShadowEffect BlurRadius="6" ShadowDepth="1.2" Direction="90" Opacity="0.32" Color="#FF000000" />
-      </Border.Effect>
-      <Border Width="16" Height="2" CornerRadius="1" Background="#4D3C3C3C"
-              HorizontalAlignment="Center" VerticalAlignment="Center" />
-    </Border>
+      </Grid.RenderTransform>
+      <Border x:Name="HandleCache" Background="Transparent" IsHitTestVisible="False">
+        <Border x:Name="HandleHost"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Background="#F8FFFFFF"
+                BorderBrush="#1A000000"
+                BorderThickness="1"
+                IsHitTestVisible="False">
+          <Border.Effect>
+            <DropShadowEffect BlurRadius="10" ShadowDepth="2" Direction="90" Opacity="0.22" Color="#FF000000" />
+          </Border.Effect>
+          <Border Width="22" Height="2" CornerRadius="1" Background="#4D3C3C3C"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </Border>
+    </Grid>
   </Grid>
 </Window>

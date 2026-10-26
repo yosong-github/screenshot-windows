@@ -10,6 +10,15 @@ public static class WindowPlacement
         NativeMethods.SetWindowPos(hwnd, NativeMethods.HwndTopmost, x, y, width, height, flags);
     }
 
+    /// <summary>Bring a window to the top of the topmost band without moving or resizing it.</summary>
+    public static void RaiseTopmost(IntPtr hwnd)
+    {
+        const uint SwpNoMove = 0x0002;
+        const uint SwpNoSize = 0x0001;
+        var flags = SwpNoMove | SwpNoSize | NativeMethods.SwpNoActivate | NativeMethods.SwpShowWindow;
+        NativeMethods.SetWindowPos(hwnd, NativeMethods.HwndTopmost, 0, 0, 0, 0, flags);
+    }
+
     public static void MakeToolWindow(IntPtr hwnd)
     {
         var style = NativeMethods.GetExStyle(hwnd).ToInt64();

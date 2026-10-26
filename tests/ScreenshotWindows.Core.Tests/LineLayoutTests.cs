@@ -83,15 +83,19 @@ public class LineLayoutTests
     [Fact]
     public void Handle_IsACenteredPill_AndScalesAt125Percent()
     {
-        Assert.InRange(LineLayout.HandleWidth, 64, 88);
-        Assert.InRange(LineLayout.HandleHeight, 6, 12);
+        Assert.InRange(LineLayout.HandleWidth, 80, 96);
+        Assert.InRange(LineLayout.HandleHeight, 10, 14);
         Assert.Equal(LineLayout.HandleHeight / 2, LineLayout.HandleRadius);
+        Assert.InRange(LineLayout.HandleShadowBlur, 8, 12);
+        Assert.Equal(2, LineLayout.HandleShadowDepth);
+        Assert.InRange(LineLayout.HandleShadowOpacity, 0.18, 0.25);
+        Assert.True(LineLayout.HandleShadowRoom >= LineLayout.HandleShadowBlur + LineLayout.HandleShadowDepth + 4);
 
         var monitor = new MonitorBounds("DISPLAY", 100, 40, 2560, 1440, 96, 96);
         var rect = LineLayout.HandleBounds(monitor);
-        Assert.Equal(72, rect.Width);
-        Assert.Equal(8, rect.Height);
-        Assert.Equal(100 + (2560 - 72) / 2, rect.X);
+        Assert.Equal(88, rect.Width);
+        Assert.Equal(12, rect.Height);
+        Assert.Equal(100 + (2560 - 88) / 2, rect.X);
         Assert.Equal(40, rect.Y);
         Assert.True(LineLayout.ContainsHandle(monitor, rect.X + 4, rect.Y));
         Assert.False(LineLayout.ContainsHandle(monitor, rect.X - 1, rect.Y));
@@ -100,9 +104,18 @@ public class LineLayoutTests
         var scaled = LineLayout.HandleBounds(dpi125);
         Assert.Equal(DisplayScale.ToPhysical(LineLayout.HandleWidth, 120), scaled.Width);
         Assert.Equal(DisplayScale.ToPhysical(LineLayout.HandleHeight, 120), scaled.Height);
-        Assert.Equal(90, scaled.Width);
-        Assert.Equal(10, scaled.Height);
+        Assert.Equal(110, scaled.Width);
+        Assert.Equal(15, scaled.Height);
         Assert.Equal(100 + (2560 - scaled.Width) / 2, scaled.X);
         Assert.Equal(40, scaled.Y);
+    }
+
+    [Fact]
+    public void FlightBitmap_IsTwiceThePhysicalSlot()
+    {
+        Assert.Equal(2, LineLayout.FlightBitmapScale);
+        Assert.Equal(200, LineLayout.FlightBitmapPixels(100, 96));
+        Assert.Equal(250, LineLayout.FlightBitmapPixels(100, 120));
+        Assert.Equal(1, LineLayout.FlightBitmapPixels(0, 96));
     }
 }

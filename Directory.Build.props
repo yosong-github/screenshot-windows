@@ -8,6 +8,7 @@
     <Deterministic>true</Deterministic>
     <Company>screenshot-windows</Company>
     <Product>screenshot-windows</Product>
+    <!-- Single product version. The installer reads this value; do not duplicate it. -->
     <Version>1.0.0</Version>
   </PropertyGroup>
 </Project>

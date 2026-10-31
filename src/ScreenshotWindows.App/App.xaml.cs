@@ -7,7 +7,9 @@ using Microsoft.Extensions.Hosting;
 using ScreenshotWindows.App.Session;
 using ScreenshotWindows.App.Tray;
 using ScreenshotWindows.App.Views;
+using ScreenshotWindows.Core.Domain;
 using ScreenshotWindows.Platform.Settings;
+using ScreenshotWindows.Platform.Startup;
 
 namespace ScreenshotWindows.App;
 
@@ -37,11 +39,20 @@ public partial class App : Application
         }
 
         RenderOptions.ProcessRenderMode = RenderMode.Default;
+        var quiet = AutostartCommand.IsQuietLaunch(e.Args);
         _host = AppServices.Build();
+        var autostart = _host.Services.GetRequiredService<IAutostart>();
+        try
+        {
+            autostart.Repair();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException or InvalidOperationException)
+        {
+        }
         var session = _host.Services.GetRequiredService<LineSession>();
         var tray = _host.Services.GetRequiredService<TrayIconController>();
         tray.Bind(session);
-        session.Start();
+        session.Start(quiet);
         Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(FlightTrace.NoteRenderTier));
     }
 

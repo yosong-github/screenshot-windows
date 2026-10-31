@@ -51,9 +51,9 @@ Phase 1 is what this version ships. Later items are listed only.
 - [ ] Swing animation
 - [ ] 屏幕录像与裁剪
 - [ ] Screen recordings and trim
-- [ ] 登录时启动
-- [ ] Launch at login
+- [x] 登录时启动。托盘「开机自启」写 HKCU Run，`--autostart` 只进托盘
+- [x] Launch at login. The tray item 开机自启 writes the HKCU Run value; `--autostart` stays in the tray
 - [ ] 界面本地化（resx，英文与简体中文）。这一版的界面文字是写死的双语
 - [ ] UI localization (resx, English and zh-Hans). This version hardcodes bilingual strings
-- [ ] 安装包与正式发布（CI 产物之外）
-- [ ] Installer and a release beyond the CI artifact
+- [x] 按用户安装的 Inno Setup 安装包，CI 产物 `screenshot-windows-setup`
+- [x] Per-user Inno Setup installer, CI artifact `screenshot-windows-setup`

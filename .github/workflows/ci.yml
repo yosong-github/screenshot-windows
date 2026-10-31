@@ -18,7 +18,90 @@ jobs:
         run: dotnet test screenshot-windows.sln -c Release --no-build
       - name: Publish
         run: dotnet publish src/ScreenshotWindows.App/ScreenshotWindows.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --yes --no-progress
+          } elseif ([version](Get-Item $iscc).VersionInfo.FileVersion -lt [version]"6.5.0") {
+            choco upgrade innosetup --yes --no-progress
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "ISCC.exe was not found. Inno Setup 6.5 or newer is required."
+          }
+      # Unsigned downloads are what browsers flag. Signing is optional and runs only when
+      # every Azure Trusted Signing secret below is set. Absent secrets skip the step.
+      # AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+      # AZURE_CODESIGNING_ENDPOINT, AZURE_CODESIGNING_ACCOUNT, AZURE_CODESIGNING_PROFILE
+      - name: Check code-signing secrets
+        id: signing
+        shell: pwsh
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_CODESIGNING_ENDPOINT: ${{ secrets.AZURE_CODESIGNING_ENDPOINT }}
+          AZURE_CODESIGNING_ACCOUNT: ${{ secrets.AZURE_CODESIGNING_ACCOUNT }}
+          AZURE_CODESIGNING_PROFILE: ${{ secrets.AZURE_CODESIGNING_PROFILE }}
+        run: |
+          $names = @(
+            "AZURE_TENANT_ID",
+            "AZURE_CLIENT_ID",
+            "AZURE_CLIENT_SECRET",
+            "AZURE_CODESIGNING_ENDPOINT",
+            "AZURE_CODESIGNING_ACCOUNT",
+            "AZURE_CODESIGNING_PROFILE"
+          )
+          $missing = @($names | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+          if ($missing.Count -gt 0) {
+            Write-Host "Code signing skipped. Missing secrets: $($missing -join ', ')."
+            Write-Host "Set those repository secrets to sign the portable exe and the installer with Azure Trusted Signing."
+            "enabled=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            Write-Host "Code signing secrets are present. The portable exe and the installer will be signed."
+            "enabled=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+      - name: Sign portable exe
+        if: steps.signing.outputs.enabled == 'true'
+        uses: azure/trusted-signing-action@v2.0.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_CODESIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_CODESIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CODESIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}/publish
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: screenshot-windows
+      - name: Installer
+        shell: pwsh
+        run: ./installer/build.ps1 -PublishDir publish -OutputDir artifacts
+      - name: Sign installer
+        if: steps.signing.outputs.enabled == 'true'
+        uses: azure/trusted-signing-action@v2.0.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_CODESIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_CODESIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CODESIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}/artifacts
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: screenshot-windows setup
       - uses: actions/upload-artifact@v4
         with:
           name: screenshot-windows-win-x64
           path: publish/screenshot-windows.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-windows-setup
+          path: artifacts/screenshot-windows-setup-*.exe

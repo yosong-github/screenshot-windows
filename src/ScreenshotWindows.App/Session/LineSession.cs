@@ -67,7 +67,7 @@ public sealed class LineSession
 
     public HotkeyChord? LineShortcut => _settings.LineHotkey;
 
-    public void Start()
+    public void Start(bool quiet = false)
     {
         var restored = new List<HangingItem>();
         foreach (var shot in _settings.Hanging)
@@ -91,9 +91,9 @@ public sealed class LineSession
         _model.Replace(_line.Items, null);
         Persist();
         FlightWindow.Warm(_displays.QueryMonitors());
-        BindHotkeys(announce: true);
+        BindHotkeys(announce: !quiet);
         _timer.Start();
-        if (_line.Count == 0)
+        if (quiet || _line.Count == 0)
         {
             return;
         }

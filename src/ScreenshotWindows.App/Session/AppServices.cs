@@ -11,6 +11,7 @@ using ScreenshotWindows.Platform.Display;
 using ScreenshotWindows.Platform.Files;
 using ScreenshotWindows.Platform.Hotkeys;
 using ScreenshotWindows.Platform.Settings;
+using ScreenshotWindows.Platform.Startup;
 using ScreenshotWindows.Platform.Win32;
 
 namespace ScreenshotWindows.App.Session;
@@ -29,6 +30,7 @@ public static class AppServices
                 services.AddSingleton<IClipboardImageWriter, ClipboardImageWriter>();
                 services.AddSingleton<ICaptureStore, CaptureStore>();
                 services.AddSingleton<ISettingsStore, JsonSettingsStore>();
+                services.AddSingleton<IAutostart, RegistryAutostart>();
                 services.AddSingleton<Clothesline>();
                 services.AddSingleton<RevealEngine>();
                 services.AddSingleton<LineViewModel>();

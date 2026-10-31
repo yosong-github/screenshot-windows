@@ -50,9 +50,39 @@ Pictures are saved under `Pictures\screenshot-windows` (or `%LOCALAPPDATA%\scree
 
 图片保存在 `Pictures\screenshot-windows`（没有图片文件夹时用 `%LOCALAPPDATA%\screenshot-windows\Captures`）。设置在 `%LOCALAPPDATA%\screenshot-windows\settings.json`。
 
-The tray menu can show or hide the line, take a screenshot, edit shortcuts, and quit. A second launch exits.
+The tray menu can show or hide the line, take a screenshot, edit shortcuts, turn on 开机自启, and quit. A second launch exits.
 
-托盘可以显示或隐藏绳子、截图、改快捷键、退出。再次启动会直接退出。
+托盘可以显示或隐藏绳子、截图、改快捷键、开关开机自启、退出。再次启动会直接退出。
+
+## Install 安装
+
+The Windows CI run uploads two artifacts. `screenshot-windows-win-x64` is the portable `screenshot-windows.exe`. `screenshot-windows-setup` is `screenshot-windows-setup-<version>.exe`, built with Inno Setup. The version is `<Version>` in `Directory.Build.props`, the same version stamped on the executable.
+
+Windows CI 上传两个产物。`screenshot-windows-win-x64` 是便携的 `screenshot-windows.exe`。`screenshot-windows-setup` 是 Inno Setup 打出来的 `screenshot-windows-setup-<version>.exe`。版本号是 `Directory.Build.props` 里的 `<Version>`，可执行文件用的也是这个版本。
+
+The installer is per user. It does not ask for an administrator. Files go to `%LOCALAPPDATA%\Programs\screenshot-windows`. The wizard is English or Simplified Chinese. It always adds a Start menu shortcut, and offers an optional desktop shortcut. 开机自启 is checked the first time. Finish can launch the app.
+
+安装包是按当前用户安装的，不会弹出管理员确认。文件放在 `%LOCALAPPDATA%\Programs\screenshot-windows`。向导有英文和简体中文。开始菜单快捷方式总会创建，桌面快捷方式可选。第一次安装时开机自启默认勾选。结束时可以立即启动。
+
+Browsers may warn about the unsigned download. CI signs the portable exe and the installer only when Azure Trusted Signing secrets are set: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_CODESIGNING_ENDPOINT`, `AZURE_CODESIGNING_ACCOUNT`, and `AZURE_CODESIGNING_PROFILE`. When any of those is absent, signing is skipped and the build still succeeds.
+
+浏览器可能会把未签名的下载标成危险。只有配齐 Azure Trusted Signing 的密钥时，CI 才会给便携 exe 和安装包签名：`AZURE_TENANT_ID`、`AZURE_CLIENT_ID`、`AZURE_CLIENT_SECRET`、`AZURE_CODESIGNING_ENDPOINT`、`AZURE_CODESIGNING_ACCOUNT`、`AZURE_CODESIGNING_PROFILE`。缺任何一个就跳过签名，构建仍然成功。
+
+## Launch at login 开机自启
+
+The tray item **开机自启** reads and writes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value name `screenshot-windows`. The command is the quoted path of the running executable plus `--autostart`. No administrator rights. The checkmark is the registry value, not a separate setting.
+
+托盘里的 **开机自启** 读写 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`，值名是 `screenshot-windows`。命令是当前可执行文件的带引号路径，再加 `--autostart`。不需要管理员。勾选状态就是注册表里的值，不是另一份设置。
+
+`--autostart` starts in the tray and does not drop the line. A second copy still exits. If startup is on and the Run value points at a different path, the next launch rewrites it to this executable.
+
+`--autostart` 只留在托盘里，不会把绳子放下来。再开一个实例仍会退出。如果开机自启开着，但 Run 值指向别的路径，下次启动会改成当前这个程序。
+
+## Uninstall 卸载
+
+Uninstall from Windows Settings or the Start menu entry. The uninstaller closes screenshot-windows, removes shortcuts, and deletes the Run value. It then asks whether to delete `%LOCALAPPDATA%\screenshot-windows` (settings, and captures stored there when there is no Pictures folder). `Pictures\screenshot-windows` is never deleted. A silent uninstall keeps the local data folder.
+
+在 Windows 设置或开始菜单里卸载。卸载程序会先关掉 screenshot-windows，删掉快捷方式和 Run 值，再询问要不要删除 `%LOCALAPPDATA%\screenshot-windows`（设置，以及没有图片文件夹时存在那里的截图）。`Pictures\screenshot-windows` 不会被删除。静默卸载会保留本地数据目录。
 
 ## Layout 结构
 
@@ -63,9 +93,9 @@ ScreenshotWindows.App          WPF, MVVM, Microsoft.Extensions.Hosting
 ScreenshotWindows.Core.Tests -> ScreenshotWindows.Core
 ```
 
-Platform contracts include `IScreenCapture` (freeze and crop), `IGlobalHotkey` (`RegisterHotKey`), `IDisplayEnvironment`, `IClipboardImageWriter`, `ICaptureStore`, and `ISettingsStore`.
+Platform contracts include `IScreenCapture` (freeze and crop), `IGlobalHotkey` (`RegisterHotKey`), `IDisplayEnvironment`, `IClipboardImageWriter`, `ICaptureStore`, and `ISettingsStore`. `IAutostart` lives in Platform and writes the HKCU Run value. The command text is `LoginAutostart` in Core, tested with a fake store.
 
-平台接口包括 `IScreenCapture`（冻结与裁剪）、`IGlobalHotkey`（`RegisterHotKey`）、`IDisplayEnvironment`、`IClipboardImageWriter`、`ICaptureStore` 和 `ISettingsStore`。
+平台接口包括 `IScreenCapture`（冻结与裁剪）、`IGlobalHotkey`（`RegisterHotKey`）、`IDisplayEnvironment`、`IClipboardImageWriter`、`ICaptureStore` 和 `ISettingsStore`。`IAutostart` 在 Platform 里，负责写 HKCU Run。命令文本由 Core 的 `LoginAutostart` 决定，测试用假的存储。
 
 Phase 1 is the capture hotkey, the region overlay, and the clothesline. Later work is listed in [ROADMAP.md](ROADMAP.md). The app does not watch the system Screenshots folder or the clipboard.
 
@@ -92,12 +122,12 @@ dotnet publish src/ScreenshotWindows.App/ScreenshotWindows.App.csproj -c Release
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 ```
 
-GitHub Actions on `windows-latest` builds, tests, and uploads `screenshot-windows.exe`.
+GitHub Actions on `windows-latest` builds, tests, and uploads `screenshot-windows.exe` plus `screenshot-windows-setup-<version>.exe`.
 
-GitHub Actions 在 `windows-latest` 上构建、测试并上传 `screenshot-windows.exe`。
+GitHub Actions 在 `windows-latest` 上构建、测试，并上传 `screenshot-windows.exe` 和 `screenshot-windows-setup-<version>.exe`。
 
 ## What this environment did not run 这里没能实际跑起来的部分
 
-This workspace is Linux. The solution builds here, and the Core tests pass. These were not executed on Windows: the global hotkey, BitBlt capture, per-monitor DPI placement, the region overlay, the clothesline window, the fly-to-line animation, the tray icon, and copying an image to the clipboard.
+This workspace is Linux. The solution builds here, and the Core tests pass. These were not executed on Windows: the global hotkey, BitBlt capture, per-monitor DPI placement, the region overlay, the clothesline window, the fly-to-line animation, the tray icon, copying an image to the clipboard, the HKCU Run value, and the Inno Setup installer.
 
-当前环境是 Linux。解决方案可以在这里编译，Core 测试可以通过。以下没有在 Windows 上执行过：全局热键、BitBlt 截图、按显示器 DPI 摆放窗口、选区遮罩、晾衣绳窗口、飞向绳子的动画、托盘图标，以及把图片写入剪贴板。
+当前环境是 Linux。解决方案可以在这里编译，Core 测试可以通过。以下没有在 Windows 上执行过：全局热键、BitBlt 截图、按显示器 DPI 摆放窗口、选区遮罩、晾衣绳窗口、飞向绳子的动画、托盘图标、把图片写入剪贴板、HKCU Run 值，以及 Inno Setup 安装包。
